@@ -24,12 +24,13 @@ export class CustomizeView extends LitElement {
             width: 100%;
             background: rgba(20, 20, 20, 0.8);
             border-radius: 12px;
-            outline: 0.5px rgba(255, 255, 255, 0.5) solid;
+            outline: 0.5px rgba(255, 255, 255, 0.2) solid;
             outline-offset: -1px;
             box-sizing: border-box;
             position: relative;
             overflow-y: auto;
             padding: 12px 12px;
+            z-index: 1000;
         }
 
         .settings-container::-webkit-scrollbar {
@@ -147,7 +148,7 @@ export class CustomizeView extends LitElement {
 
         .cmd-key, .shortcut-key {
             background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            // border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 3px;
             width: 16px;
             height: 16px;

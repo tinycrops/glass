@@ -68,7 +68,7 @@ export class AssistantView extends LitElement {
             top: 0; left: 0; right: 0; bottom: 0;
             border-radius: 12px; /* Match parent */
             padding: 1px;
-            background: linear-gradient(169deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.5) 100%); 
+            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%); 
             -webkit-mask:
                 linear-gradient(#fff 0 0) content-box,
                 linear-gradient(#fff 0 0);
@@ -289,12 +289,20 @@ export class AssistantView extends LitElement {
 
         .insights-container {
             overflow-y: auto;
-            padding: 12px 12px 16px 12px;
+            padding: 12px 16px 16px 16px;
             position: relative;
             z-index: 1;
             min-height: 150px;
             max-height: 600px;
             flex: 1;
+        }
+
+        insights-title {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'Helvetica Neue', sans-serif;
+            margin: 12px 0 8px 0;
         }
 
         .insights-container.hidden {
@@ -1019,7 +1027,7 @@ export class AssistantView extends LitElement {
                 </div>
     
                <div class="insights-container ${this.viewMode !== 'insights' ? 'hidden' : ''}">
-                <h4>Current Summary</h4>
+                <insights-title>Current Summary</insights-title>
                 ${data.summary.length > 0 ? 
                     data.summary.slice(0, 5).map((bullet, index) => html`
                         <div
@@ -1038,7 +1046,7 @@ export class AssistantView extends LitElement {
                 }
                 
                 ${data.topic.header ? html`
-                    <h4>${data.topic.header}</h4>
+                    <insights-title>${data.topic.header}</insights-title>
                     ${data.topic.bullets.slice(0, 3).map((bullet, index) => html`
                         <div
                             class="markdown-content"
@@ -1052,7 +1060,7 @@ export class AssistantView extends LitElement {
                 ` : ''}
                 
                 ${data.actions.length > 0 ? html`
-                    <h4>Actions</h4>
+                    <insights-title>Actions</insights-title>
                     ${data.actions.slice(0, 5).map((action, index) => html`
                         <div
                             class="markdown-content"
@@ -1066,7 +1074,7 @@ export class AssistantView extends LitElement {
                 ` : ''}
 
                 ${this.hasCompletedRecording && data.followUps && data.followUps.length > 0 ? html`
-                    <h4>Follow-Ups</h4>
+                    <insights-title>Follow-Ups</insights-title>
                     ${data.followUps.map((followUp, index) => html`
                         <div
                             class="markdown-content"

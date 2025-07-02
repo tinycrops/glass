@@ -1081,7 +1081,7 @@ function setupIpcHandlers(openaiSessionRef) {
                        - settingsBounds.width / 2);
                 
                      let y = Math.round(
-                         headerBounds.y + bounds.y + bounds.height + 5);
+                         headerBounds.y + bounds.y + bounds.height + 31);
                 
                      x = Math.max(10, Math.min(display.width  - settingsBounds.width  - 10, x));
                      y = Math.max(10, Math.min(display.height - settingsBounds.height - 10, y));
@@ -1093,6 +1093,11 @@ function setupIpcHandlers(openaiSessionRef) {
             
             win.show();
             win.moveTop();
+            
+            // 설정 창을 모든 창 위에 표시
+            if (name === 'settings') {
+                win.setAlwaysOnTop(true);
+            }
             // updateLayout();
         }
     });
@@ -1105,6 +1110,7 @@ function setupIpcHandlers(openaiSessionRef) {
                     clearTimeout(settingsHideTimer);
                 }
                 settingsHideTimer = setTimeout(() => {
+                    window.setAlwaysOnTop(false); // 모든 창 위 설정 해제
                     window.hide();
                     settingsHideTimer = null;
                 }, 200);

@@ -145,7 +145,7 @@ export class AppHeader extends LitElement {
             top: 0; left: 0; right: 0; bottom: 0;
             border-radius: 9000px;
             padding: 1px;
-            background: linear-gradient(169deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.5) 100%); 
+            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%); 
             -webkit-mask:
                 linear-gradient(#fff 0 0) content-box,
                 linear-gradient(#fff 0 0);
@@ -159,7 +159,8 @@ export class AppHeader extends LitElement {
             padding: 0 13px;
             background: transparent;
             border-radius: 9000px;
-            justify-content: flex-start;
+            justify-content: center;
+            width: 78px;
             align-items: center;
             gap: 6px;
             display: flex;
@@ -173,18 +174,18 @@ export class AppHeader extends LitElement {
         }
 
         .listen-button.active:hover::before {
-            background: rgba(255, 20, 20, 0.7);
+            background: rgba(255, 20, 20, 0.6);
         }
 
         .listen-button:hover::before {
-            background: rgba(255, 255, 255, 0.30);
+            background: rgba(255, 255, 255, 0.18);
         }
 
         .listen-button::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255, 255, 255, 0.20);
+            background: rgba(255, 255, 255, 0.14);
             border-radius: 9000px;
             z-index: -1;
             transition: background 0.15s ease;
@@ -196,7 +197,7 @@ export class AppHeader extends LitElement {
             top: 0; left: 0; right: 0; bottom: 0;
             border-radius: 9000px;
             padding: 1px;
-            background: linear-gradient(169deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.5) 100%);
+            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
             -webkit-mask:
                 linear-gradient(#fff 0 0) content-box,
                 linear-gradient(#fff 0 0);
@@ -212,8 +213,8 @@ export class AppHeader extends LitElement {
             align-items: center;
             gap: 9px;
             display: flex;
-            padding: 0 11px;
-            border-radius: 8px;
+            padding: 0 8px;
+            border-radius: 6px;
             transition: background 0.15s ease;
         }
 
@@ -528,9 +529,10 @@ export class AppHeader extends LitElement {
                     <div class="listen-icon">
                         ${this.isSessionActive
                             ? html`
-                                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <rect width="10" height="10" fill="white" style="border-radius: 2px;"/>
+                                <svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <rect width="9" height="9" rx="1" fill="white"/>
                                 </svg>
+
                             `
                             : html`
                                 <svg width="12" height="11" viewBox="0 0 12 11" fill="none" xmlns="http://www.w3.org/2000/svg">

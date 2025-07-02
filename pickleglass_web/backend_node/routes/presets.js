@@ -3,9 +3,6 @@ const crypto = require('crypto');
 const db = require('../db');
 const router = express.Router();
 
-// const DEFAULT_USER_ID = 'default_user'; // REMOVED
-
-// GET all presets (user's custom presets + default presets)
 router.get('/', (req, res) => {
     try {
         const presets = db.prepare(
@@ -20,7 +17,6 @@ router.get('/', (req, res) => {
     }
 });
 
-// POST a new custom preset
 router.post('/', (req, res) => {
     const { title, prompt } = req.body;
     if (!title || !prompt) {
@@ -43,7 +39,6 @@ router.post('/', (req, res) => {
     }
 });
 
-// PUT (update) a custom preset
 router.put('/:id', (req, res) => {
     const { id } = req.params;
     const { title, prompt } = req.body;
@@ -69,7 +64,6 @@ router.put('/:id', (req, res) => {
     }
 });
 
-// DELETE a custom preset
 router.delete('/:id', (req, res) => {
     const { id } = req.params;
 

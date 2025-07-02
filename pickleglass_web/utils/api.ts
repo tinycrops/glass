@@ -84,26 +84,19 @@ export interface SessionDetails {
     summary: Summary | null;
 }
 
-/* ------------------------------------------------------------------ */
-/* 듀얼 모드 감지                                                        */
-/* ------------------------------------------------------------------ */
 
-// 현재 사용자가 Firebase 모드인지 로컬 모드인지 판단
 const isFirebaseMode = (): boolean => {
   return firebaseAuth.currentUser !== null;
 };
 
-// Firestore 타임스탬프를 Unix 타임스탬프로 변환
 const timestampToUnix = (timestamp: Timestamp): number => {
   return timestamp.seconds * 1000 + Math.floor(timestamp.nanoseconds / 1000000);
 };
 
-// Unix 타임스탬프를 Firestore 타임스탬프로 변환
 const unixToTimestamp = (unix: number): Timestamp => {
   return Timestamp.fromMillis(unix);
 };
 
-// Firestore 데이터를 API 형식으로 변환
 const convertFirestoreSession = (session: { id: string } & FirestoreSession, uid: string): Session => {
   return {
     id: session.id,
@@ -119,7 +112,7 @@ const convertFirestoreSession = (session: { id: string } & FirestoreSession, uid
 const convertFirestoreTranscript = (transcript: { id: string } & FirestoreTranscript): Transcript => {
   return {
     id: transcript.id,
-    session_id: '', // 세션 ID는 따로 설정
+    session_id: '',
     start_at: timestampToUnix(transcript.startAt),
     end_at: transcript.endAt ? timestampToUnix(transcript.endAt) : undefined,
     speaker: transcript.speaker,
@@ -133,7 +126,7 @@ const convertFirestoreTranscript = (transcript: { id: string } & FirestoreTransc
 const convertFirestoreAiMessage = (message: { id: string } & FirestoreAiMessage): AiMessage => {
   return {
     id: message.id,
-    session_id: '', // 세션 ID는 따로 설정
+    session_id: '',
     sent_at: timestampToUnix(message.sentAt),
     role: message.role,
     content: message.content,
@@ -171,15 +164,11 @@ const convertFirestorePreset = (preset: { id: string } & FirestorePromptPreset, 
   };
 };
 
-/* ------------------------------------------------------------------ */
-/* ① API 기본 주소 (로컬 모드용)                                          */
-/*    - 런타임 설정 파일에서 동적으로 가져오거나 fallback 사용            */
 
 let API_ORIGIN = process.env.NODE_ENV === 'development'
   ? 'http://localhost:9001'
   : '';
 
-// 런타임 설정 로드 (정적 파일 환경에서 사용)
 const loadRuntimeConfig = async (): Promise<string | null> => {
   try {
     const response = await fetch('/runtime-config.json');
@@ -194,7 +183,6 @@ const loadRuntimeConfig = async (): Promise<string | null> => {
   return null;
 };
 
-// Electron 환경에서 동적 API URL 가져오기 (IPC 방식)
 const getApiUrlFromElectron = (): string | null => {
   if (typeof window !== 'undefined') {
     try {
@@ -217,15 +205,12 @@ const getApiUrlFromElectron = (): string | null => {
   return null;
 };
 
-// API URL 초기화 상태 추적
 let apiUrlInitialized = false;
 let initializationPromise: Promise<void> | null = null;
 
-// API URL 초기화 (비동기)
 const initializeApiUrl = async () => {
   if (apiUrlInitialized) return;
   
-  // 1. Electron IPC 시도
   const electronUrl = getApiUrlFromElectron();
   if (electronUrl) {
     API_ORIGIN = electronUrl;
@@ -233,7 +218,6 @@ const initializeApiUrl = async () => {
     return;
   }
 
-  // 2. 런타임 설정 파일 시도
   const runtimeUrl = await loadRuntimeConfig();
   if (runtimeUrl) {
     API_ORIGIN = runtimeUrl;
@@ -241,17 +225,14 @@ const initializeApiUrl = async () => {
     return;
   }
 
-  // 3. Fallback 사용
   console.log('📍 Using fallback API URL:', API_ORIGIN);
   apiUrlInitialized = true;
 };
 
-// 페이지 로드 시 API URL 초기화
 if (typeof window !== 'undefined') {
   initializationPromise = initializeApiUrl();
 }
 
-// 사용자 정보 변경 이벤트 리스너들
 const userInfoListeners: Array<(userInfo: UserProfile | null) => void> = [];
 
 export const getUserInfo = (): UserProfile | null => {
@@ -262,7 +243,7 @@ export const getUserInfo = (): UserProfile | null => {
     try {
       return JSON.parse(storedUserInfo);
     } catch (error) {
-      console.error('사용자 정보 파싱 실패:', error);
+      console.error('Failed to parse user info:', error);
       localStorage.removeItem('pickleglass_user');
     }
   }
@@ -278,12 +259,9 @@ export const setUserInfo = (userInfo: UserProfile | null, skipEvents: boolean = 
     localStorage.removeItem('pickleglass_user');
   }
   
-  // skipEvents가 true이면 이벤트 발생하지 않음 (logout용)
   if (!skipEvents) {
-    // 모든 리스너에게 변경 사항 알림
     userInfoListeners.forEach(listener => listener(userInfo));
     
-    // 커스텀 이벤트 발생 (useAuthCheck에서 감지용)
     window.dispatchEvent(new Event('userInfoChanged'));
   }
 };
@@ -291,7 +269,6 @@ export const setUserInfo = (userInfo: UserProfile | null, skipEvents: boolean = 
 export const onUserInfoChange = (listener: (userInfo: UserProfile | null) => void) => {
   userInfoListeners.push(listener);
   
-  // cleanup 함수 반환
   return () => {
     const index = userInfoListeners.indexOf(listener);
     if (index > -1) {
@@ -313,15 +290,12 @@ export const getApiHeaders = (): HeadersInit => {
   return headers;
 };
 
-/* ------------------------------------------------------------------ */
-/* ② fetch 래퍼 (로컬 모드용)                                           */
+
 export const apiCall = async (path: string, options: RequestInit = {}) => {
-  // API URL이 초기화될 때까지 대기
   if (!apiUrlInitialized && initializationPromise) {
     await initializationPromise;
   }
   
-  // 여전히 초기화되지 않았다면 다시 시도
   if (!apiUrlInitialized) {
     await initializeApiUrl();
   }
@@ -346,9 +320,6 @@ export const apiCall = async (path: string, options: RequestInit = {}) => {
   return fetch(url, defaultOpts);
 };
 
-/* ------------------------------------------------------------------ */
-/* ③ 듀얼 모드 통합 API                                                 */
-/* ------------------------------------------------------------------ */
 
 export const searchConversations = async (query: string): Promise<Session[]> => {
   if (!query.trim()) {
@@ -356,14 +327,11 @@ export const searchConversations = async (query: string): Promise<Session[]> => 
   }
 
   if (isFirebaseMode()) {
-    // Firebase 모드: Firestore에서 검색 (간단한 구현)
-    // 실제로는 Firestore의 full-text 검색이 제한적이므로 클라이언트 측에서 필터링
     const sessions = await getSessions();
     return sessions.filter(session => 
       session.title.toLowerCase().includes(query.toLowerCase())
     );
   } else {
-    // 로컬 모드: 백엔드 API 사용
     const response = await apiCall(`/api/conversations/search?q=${encodeURIComponent(query)}`, {
       method: 'GET',
     });
@@ -374,7 +342,6 @@ export const searchConversations = async (query: string): Promise<Session[]> => 
   }
 };
 
-// --- Session APIs ---
 export const getSessions = async (): Promise<Session[]> => {
   if (isFirebaseMode()) {
     const uid = firebaseAuth.currentUser!.uid;
@@ -391,7 +358,6 @@ export const getSessionDetails = async (sessionId: string): Promise<SessionDetai
   if (isFirebaseMode()) {
     const uid = firebaseAuth.currentUser!.uid;
     
-    // 병렬로 모든 데이터 가져오기
     const [session, transcripts, aiMessages, summary] = await Promise.all([
       FirestoreSessionService.getSession(uid, sessionId),
       FirestoreTranscriptService.getTranscripts(uid, sessionId),
@@ -444,7 +410,6 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
   }
 };
 
-// --- User APIs ---
 export const getUserProfile = async (): Promise<UserProfile> => {
   if (isFirebaseMode()) {
     const user = firebaseAuth.currentUser!;
@@ -477,7 +442,6 @@ export const updateUserProfile = async (data: { displayName: string }): Promise<
 
 export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> => {
   if (isFirebaseMode()) {
-    // Firebase 모드에서는 사용자가 이미 인증되었으므로 Firestore에 사용자 정보 생성/업데이트만 수행
     const uid = firebaseAuth.currentUser!.uid;
     const existingUser = await FirestoreUserService.getUser(uid);
     
@@ -501,8 +465,7 @@ export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> 
 
 export const saveApiKey = async (apiKey: string): Promise<void> => {
   if (isFirebaseMode()) {
-    // Firebase 모드에서는 API 키가 필요하지 않음 (무시)
-    console.log('Firebase 모드에서는 API 키가 필요하지 않습니다.');
+    console.log('API key is not needed in Firebase mode');
     return;
   } else {
     const response = await apiCall(`/api/user/api-key`, {
@@ -515,7 +478,6 @@ export const saveApiKey = async (apiKey: string): Promise<void> => {
 
 export const checkApiKeyStatus = async (): Promise<{ hasApiKey: boolean }> => {
   if (isFirebaseMode()) {
-    // Firebase 모드에서는 항상 API 키가 있는 것으로 간주
     return { hasApiKey: true };
   } else {
     const response = await apiCall(`/api/user/api-key-status`, { method: 'GET' });
@@ -528,10 +490,8 @@ export const deleteAccount = async (): Promise<void> => {
   if (isFirebaseMode()) {
     const uid = firebaseAuth.currentUser!.uid;
     
-    // Firestore 데이터 삭제
     await FirestoreUserService.deleteUser(uid);
     
-    // Firebase Auth 계정 삭제
     await firebaseAuth.currentUser!.delete();
   } else {
     const response = await apiCall(`/api/user/profile`, { method: 'DELETE' });
@@ -539,7 +499,6 @@ export const deleteAccount = async (): Promise<void> => {
   }
 };
 
-// --- Preset APIs ---
 export const getPresets = async (): Promise<PromptPreset[]> => {
   if (isFirebaseMode()) {
     const uid = firebaseAuth.currentUser!.uid;
@@ -597,7 +556,6 @@ export const deletePreset = async (id: string): Promise<void> => {
   }
 };
 
-// --- Batch API ---
 export interface BatchData {
     profile?: UserProfile;
     presets?: PromptPreset[];
@@ -608,7 +566,6 @@ export const getBatchData = async (includes: ('profile' | 'presets' | 'sessions'
   if (isFirebaseMode()) {
     const result: BatchData = {};
     
-    // 병렬로 요청된 데이터 가져오기
     const promises: Promise<any>[] = [];
     
     if (includes.includes('profile')) {
@@ -641,10 +598,8 @@ export const logout = async () => {
     await signOut(firebaseAuth);
   }
   
-  // 로컬 사용자 정보도 클리어
   setUserInfo(null);
   
-  // localStorage에서 관련 데이터도 정리
   localStorage.removeItem('openai_api_key');
   localStorage.removeItem('user_info');
   

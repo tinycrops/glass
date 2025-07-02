@@ -3,10 +3,6 @@ const db = require('../db');
 const router = express.Router();
 const crypto = require('crypto');
 
-// For now, we'll continue with a single-user model for local development.
-// const DEFAULT_USER_ID = 'default_user'; // REMOVED - Now using req.uid from middleware
-
-// GET all session metadata
 router.get('/', (req, res) => {
     try {
         const sessions = db.prepare(
@@ -19,7 +15,6 @@ router.get('/', (req, res) => {
     }
 });
 
-// POST a new session
 router.post('/', (req, res) => {
     const { title } = req.body;
     const sessionId = crypto.randomUUID();
@@ -38,7 +33,6 @@ router.post('/', (req, res) => {
     }
 });
 
-// GET details for a specific session
 router.get('/:session_id', (req, res) => {
     const { session_id } = req.params;
     try {
@@ -63,11 +57,9 @@ router.get('/:session_id', (req, res) => {
     }
 });
 
-// DELETE a session and all related data
 router.delete('/:session_id', (req, res) => {
     const { session_id } = req.params;
     
-    // Check if session exists
     const session = db.prepare("SELECT id FROM sessions WHERE id = ?").get(session_id);
     if (!session) {
         return res.status(404).json({ error: 'Session not found' });
@@ -87,7 +79,6 @@ router.delete('/:session_id', (req, res) => {
     }
 });
 
-// Search across transcripts and ai_messages for a query
 router.get('/search', (req, res) => {
     const { q } = req.query;
     if (!q) {
@@ -96,7 +87,6 @@ router.get('/search', (req, res) => {
 
     try {
         const searchQuery = `%${q}%`;
-        // This query finds session_ids that have matching text in transcripts, ai_messages, or summaries
         const sessionIds = db.prepare(`
             SELECT DISTINCT session_id FROM (
                 SELECT session_id FROM transcripts WHERE text LIKE ?
@@ -111,7 +101,6 @@ router.get('/search', (req, res) => {
             return res.json([]);
         }
 
-        // Using a prepared statement for IN clause requires a bit of work
         const placeholders = sessionIds.map(() => '?').join(',');
         const sessions = db.prepare(
             `SELECT id, uid, title, started_at, ended_at, sync_state, updated_at FROM sessions WHERE id IN (${placeholders}) ORDER BY started_at DESC`

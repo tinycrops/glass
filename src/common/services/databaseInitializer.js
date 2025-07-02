@@ -19,10 +19,8 @@ class DatabaseInitializer {
         try {
             console.log('[DatabaseInitializer] Starting database initialization...');
             
-            // 1. 데이터 디렉토리 확인 및 생성
             await this.ensureDataDirectory();
             
-            // 2. 데이터베이스 파일 존재 여부 확인
             const dbExists = await this.checkDatabaseExists();
             
             if (!dbExists) {
@@ -33,7 +31,6 @@ class DatabaseInitializer {
                 await this.connectToExistingDatabase();
             }
 
-            // 3. 기본 데이터 검증 및 복구
             await this.validateAndRecoverData();
 
             this.isInitialized = true;
@@ -76,7 +73,6 @@ class DatabaseInitializer {
         try {
             await sqliteClient.connect(); // Connect and initialize tables/default data
             
-            // We now rely on initDefaultData to create the user, so we just fetch it.
             const user = await sqliteClient.getUser(sqliteClient.defaultUserId);
             if (!user) {
                 throw new Error('Default user was not created during initialization.');
@@ -116,14 +112,12 @@ class DatabaseInitializer {
         try {
             console.log('[DatabaseInitializer] Validating database integrity...');
 
-            // 1. Default user 테이블 검증
             const defaultUser =  await sqliteClient.getUser(sqliteClient.defaultUserId);
             if (!defaultUser) {
                 console.log('[DatabaseInitializer] Default user not found - creating...');
                 await sqliteClient.initDefaultData();
             }
 
-            // 2. 프리셋 템플릿 검증
             const presetTemplates = await sqliteClient.getPresets('default_user');
             if (!presetTemplates || presetTemplates.length === 0) {
                 console.log('[DatabaseInitializer] Preset templates missing - creating...');
@@ -135,7 +129,6 @@ class DatabaseInitializer {
 
         } catch (error) {
             console.error('[DatabaseInitializer] Database validation failed:', error);
-            // 검증 실패 시 기본 데이터 재생성
             try {
                 await sqliteClient.initDefaultData();
                 console.log('[DatabaseInitializer] Default data recovered');
@@ -161,16 +154,13 @@ class DatabaseInitializer {
         try {
             console.log('[DatabaseInitializer] Resetting database...');
             
-            // SQLite 연결 종료
             sqliteClient.close();
             
-            // 데이터베이스 파일 삭제
             if (fs.existsSync(this.dbPath)) {
                 fs.unlinkSync(this.dbPath);
                 console.log('[DatabaseInitializer] Database file deleted');
             }
 
-            // 재초기화
             this.isInitialized = false;
             await this.initialize();
 
@@ -192,7 +182,6 @@ class DatabaseInitializer {
     }
 }
 
-// 싱글톤 인스턴스
 const databaseInitializer = new DatabaseInitializer();
 
 module.exports = databaseInitializer; 

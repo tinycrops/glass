@@ -4,8 +4,7 @@ export class AssistantView extends LitElement {
     static styles = css`
         :host {
             display: block;
-            width: 400px; /* 고정 가로 크기 */
-            /* 높이는 내용에 맞게 자동 조절 */
+            width: 400px;
         }
 
         * {
@@ -37,7 +36,6 @@ export class AssistantView extends LitElement {
             color: #ffd700 !important;
         }
 
-        /* 코드 블록 구문 강조 색상 */
         .hljs-keyword { color: #ff79c6 !important; }
         .hljs-string { color: #f1fa8c !important; }
         .hljs-comment { color: #6272a4 !important; }
@@ -146,8 +144,8 @@ export class AssistantView extends LitElement {
             gap: 4px;
             align-items: center;
             flex-shrink: 0;
-            width: 120px; /* 고정 너비로 버튼 위치 안정화 */
-            justify-content: flex-end; /* 오른쪽 정렬 */
+            width: 120px;
+            justify-content: flex-end;
             box-sizing: border-box;
             padding: 4px;
         }
@@ -169,7 +167,7 @@ export class AssistantView extends LitElement {
             height: 24px;
             white-space: nowrap;
             transition: background-color 0.15s ease;
-            justify-content: center; /* 내부 콘텐츠 중앙 정렬 */
+            justify-content: center;
         }
 
         .toggle-button:hover {
@@ -229,18 +227,17 @@ export class AssistantView extends LitElement {
             transform: translate(-50%, -50%) scale(1);
         }
 
-        /* 전사(Transcription) 컨테이너 - 직접적인 구조 */
         .transcription-container {
             overflow-y: auto;
-            padding: 12px 12px 16px 12px; /* 하단 패딩 조정 */
+            padding: 12px 12px 16px 12px;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            min-height: 150px; /* 최소 높이 설정 */
-            max-height: 600px; /* 최대 높이 여유 확보 */
+            min-height: 150px;
+            max-height: 600px;
             position: relative;
             z-index: 1;
-            flex: 1; /* 남은 공간 모두 사용 */
+            flex: 1;
         }
 
         .transcription-container.hidden {
@@ -248,29 +245,28 @@ export class AssistantView extends LitElement {
         }
 
         .transcription-container::-webkit-scrollbar {
-            width: 8px; /* 스크롤바 너비 증가 */
+            width: 8px;
         }
         .transcription-container::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1); /* 트랙 배경 추가 */
+            background: rgba(0, 0, 0, 0.1);
             border-radius: 4px;
         }
         .transcription-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3); /* 더 뚜렷한 색상 */
+            background: rgba(255, 255, 255, 0.3);
             border-radius: 4px;
         }
         .transcription-container::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5); /* 호버 시 더 밝게 */
+            background: rgba(255, 255, 255, 0.5);
         }
 
-        /* 채팅 말풍선 스타일 - 잘림 문제 해결 */
         .stt-message {
             padding: 8px 12px;
             border-radius: 12px;
-            max-width: 80%; /* 여유 공간 확보 */
+            max-width: 80%;
             word-wrap: break-word;
-            word-break: break-word; /* 긴 단어도 강제 줄바꿈 */
-            line-height: 1.5; /* 줄 간격을 조금 더 줍니다 */
-            font-size: 13px; /* 11px에서 13px로 키웁니다 (원하는 크기로 조절) */
+            word-break: break-word;
+            line-height: 1.5;
+            font-size: 13px;
             margin-bottom: 4px;
             box-sizing: border-box;
         }
@@ -280,7 +276,7 @@ export class AssistantView extends LitElement {
             color: rgba(255, 255, 255, 0.9);
             align-self: flex-start;
             border-bottom-left-radius: 4px;
-            margin-right: auto; /* 왼쪽 정렬 확실히 */
+            margin-right: auto;
         }
         
         .stt-message.me {
@@ -288,18 +284,17 @@ export class AssistantView extends LitElement {
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
-            margin-left: auto; /* 오른쪽 정렬 확실히 */
+            margin-left: auto; 
         }
 
-        /* Insights 컨테이너 스타일 - 직접적인 구조 */
         .insights-container {
             overflow-y: auto;
-            padding: 12px 12px 16px 12px; /* 하단 패딩 조정 */
+            padding: 12px 12px 16px 12px;
             position: relative;
             z-index: 1;
-            min-height: 150px; /* 최소 높이 설정 */
-            max-height: 600px; /* 최대 높이 여유 확보 */
-            flex: 1; /* 남은 공간 모두 사용 */
+            min-height: 150px;
+            max-height: 600px;
+            flex: 1;
         }
 
         .insights-container.hidden {
@@ -307,18 +302,18 @@ export class AssistantView extends LitElement {
         }
 
         .insights-container::-webkit-scrollbar {
-            width: 8px; /* 스크롤바 너비 증가 */
+            width: 8px;
         }
         .insights-container::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1); /* 트랙 배경 추가 */
+            background: rgba(0, 0, 0, 0.1);
             border-radius: 4px;
         }
         .insights-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3); /* 더 뚜렷한 색상 */
+            background: rgba(255, 255, 255, 0.3);
             border-radius: 4px;
         }
         .insights-container::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5); /* 호버 시 더 밝게 */
+            background: rgba(255, 255, 255, 0.5);
         }
 
         .insights-container h4 {
@@ -329,12 +324,11 @@ export class AssistantView extends LitElement {
             padding: 4px 8px;
             border-radius: 4px;
             background: transparent;
-            cursor: default; /* 클릭 불가로 변경 */
-            /* transition 제거 */
+            cursor: default;
         }
 
         .insights-container h4:hover {
-            background: transparent; /* hover 효과 제거 */
+            background: transparent;
         }
 
         .insights-container h4:first-child {
@@ -494,13 +488,9 @@ export class AssistantView extends LitElement {
             interval: null,
             counter: 1,
         };
-        // --- End Debug Utilities ---
-
-        // 핸들러 바인딩
         this.handleSttUpdate = this.handleSttUpdate.bind(this);
         this.adjustWindowHeight = this.adjustWindowHeight.bind(this);
         
-        // 라이브러리 로드
         this.loadLibraries();
     }
 
@@ -523,12 +513,9 @@ export class AssistantView extends LitElement {
             clearInterval(this._debug.interval);
         }
     }
-    // --- End Debug Utilities ---
 
-    // 라이브러리 로드 메서드
     async loadLibraries() {
         try {
-            // Script 태그를 통해 라이브러리 로드
             if (!window.marked) {
                 await this.loadScript('../../assets/marked-4.3.0.min.js');
             }
@@ -541,12 +528,10 @@ export class AssistantView extends LitElement {
                 await this.loadScript('../../assets/dompurify-3.0.7.min.js');
             }
 
-            // 로드된 라이브러리 참조
             this.marked = window.marked;
             this.hljs = window.hljs;
             this.DOMPurify = window.DOMPurify;
 
-            // marked 설정
             if (this.marked && this.hljs) {
                 this.marked.setOptions({
                     highlight: (code, lang) => {
@@ -581,7 +566,6 @@ export class AssistantView extends LitElement {
         }
     }
 
-    // Script 로드 헬퍼 메서드
     loadScript(src) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
@@ -592,11 +576,9 @@ export class AssistantView extends LitElement {
         });
     }
 
-    // 마크다운 파싱 메서드
     parseMarkdown(text) {
         if (!text) return '';
         
-        // 라이브러리가 로드되지 않았으면 원본 텍스트 반환
         if (!this.isLibrariesLoaded || !this.marked) {
             return text;
         }
@@ -605,19 +587,16 @@ export class AssistantView extends LitElement {
             return this.marked(text);
         } catch (error) {
             console.error('Markdown parsing error:', error);
-            return text; // 파싱 실패 시 원본 텍스트 반환
+            return text;
         }
     }
 
-    // 마크다운 콘텐츠 클릭 핸들러
+
     handleMarkdownClick(originalText) {
-        // 원본 텍스트를 전달하여 처리
         this.handleRequestClick(originalText);
     }
 
-    // 마크다운 콘텐츠 렌더링 메서드 (보안 강화)
     renderMarkdownContent() {
-        // 라이브러리가 로드되지 않았으면 렌더링하지 않음
         if (!this.isLibrariesLoaded || !this.marked) {
             return;
         }
@@ -629,11 +608,9 @@ export class AssistantView extends LitElement {
                 try {
                     let parsedHTML = this.parseMarkdown(originalText);
                     
-                    // 보안 검사 적용
                     if (this.isDOMPurifyLoaded && this.DOMPurify) {
                         parsedHTML = this.DOMPurify.sanitize(parsedHTML);
                         
-                        // 위험한 콘텐츠가 감지되면 원본 텍스트로 표시
                         if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
                             console.warn('Unsafe content detected in insights, showing plain text');
                             element.textContent = '⚠️ ' + originalText;
@@ -644,13 +621,12 @@ export class AssistantView extends LitElement {
                     element.innerHTML = parsedHTML;
                 } catch (error) {
                     console.error('Error rendering markdown for element:', error);
-                    element.textContent = originalText; // 에러 시 원본 텍스트로 폴백
+                    element.textContent = originalText;
                 }
             }
         });
     }
 
-    // 타이머 관련 메서드
     startTimer() {
         this.captureStartTime = Date.now();
         this.timerInterval = setInterval(() => {
@@ -671,11 +647,9 @@ export class AssistantView extends LitElement {
         }
     }
 
-    // 창 높이 자동 조절
     adjustWindowHeight() {
         if (!window.require) return;
         
-        // DOM 업데이트 완료를 보장하는 올바른 방법
         this.updateComplete.then(() => {
             const topBar = this.shadowRoot.querySelector('.top-bar');
             const activeContent = this.viewMode === 'transcript' 
@@ -686,15 +660,10 @@ export class AssistantView extends LitElement {
             
             const topBarHeight = topBar.offsetHeight;
             
-            // ✨ [수정] 콘텐츠 영역의 실제 필요 높이를 scrollHeight로 더 정확하게 측정
-            // scrollHeight는 패딩과 내부 요소 크기를 모두 포함한 값입니다.
             const contentHeight = activeContent.scrollHeight;
             
-            // ✨ [수정] 총 필요 높이 계산식 변경
-            // 상단 바 높이 + 콘텐츠 스크롤 높이 + 추가적인 여유 공간
-            const idealHeight = topBarHeight + contentHeight + 20; // 여유 공간 20px 추가
+            const idealHeight = topBarHeight + contentHeight + 20;
 
-            // 최대/최소 높이 제한은 유지
             const targetHeight = Math.min(700, Math.max(200, idealHeight)); 
             
             console.log(`[Height Adjusted] Mode: ${this.viewMode}, TopBar: ${topBarHeight}px, Content: ${contentHeight}px, Ideal: ${idealHeight}px, Target: ${targetHeight}px`);
@@ -707,13 +676,11 @@ export class AssistantView extends LitElement {
         });
     }
 
-    // 뷰 모드 토글
     toggleViewMode() {
         this.viewMode = this.viewMode === 'insights' ? 'transcript' : 'insights';
         this.requestUpdate();
     }
 
-    // 복사 버튼 호버 처리
     handleCopyHover(isHovering) {
         this.isHovering = isHovering;
         if (isHovering) {
@@ -724,7 +691,6 @@ export class AssistantView extends LitElement {
         this.requestUpdate();
     }
 
-    // 새로운 메서드 추가: outline 데이터 파싱
     parseOutlineData() {
         const result = {
             currentSummary: [],
@@ -736,19 +702,16 @@ export class AssistantView extends LitElement {
             return result;
         }
         
-        // BULLET:: 타입 중 첫 번째를 Current Summary로 사용
         const allBullets = this.outlines.filter(item => item.startsWith('BULLET::'));
         if (allBullets.length > 0) {
             result.currentSummary.push(allBullets[0].replace('BULLET::', '').trim());
         }
-        
-        // HEADING:: 타입 찾기
+
         const heading = this.outlines.find(item => item.startsWith('HEADING::'));
         if (heading) {
             result.mainTopicHeading = heading.replace('HEADING::', '').trim();
         }
         
-        // 나머지 BULLET:: 항목들을 Main Topic bullets로 사용
         if (allBullets.length > 1) {
             result.mainTopicBullets = allBullets
                 .slice(1)
@@ -758,16 +721,15 @@ export class AssistantView extends LitElement {
         return result;
     }
 
-    // 복사 기능
+
     async handleCopy() {
-        if (this.copyState === 'copied') return; // Prevent multiple clicks
+        if (this.copyState === 'copied') return;
 
         let textToCopy = '';
 
         if (this.viewMode === 'transcript') {
             textToCopy = this.sttMessages.map(msg => `${msg.speaker}: ${msg.text}`).join('\n');
         } else {
-            // structuredData를 사용하여 복사할 텍스트 생성
             const data = this.structuredData || { summary: [], topic: { header: '', bullets: [] }, actions: [] };
             let sections = [];
             
@@ -804,58 +766,86 @@ export class AssistantView extends LitElement {
             this.copyTimeout = setTimeout(() => {
                 this.copyState = 'idle';
                 this.requestUpdate();
-            }, 1500); // 1.5초 후 원래 아이콘으로 복귀
+            }, 1500);
         } catch (err) {
             console.error('Failed to copy:', err);
         }
     }
 
-    // Throttled 높이 조절 (STT 업데이트용)
     adjustWindowHeightThrottled() {
-        // 1. 쿨타임(isThrottled가 true) 중이면 아무것도 하지 않고 즉시 종료합니다.
         if (this.isThrottled) {
             return;
         }
 
-        // 2. 쿨타임이 아니라면, 즉시 창 높이 조절을 실행합니다.
+
         this.adjustWindowHeight();
 
-        // 3. 실행 직후, 쿨타임 상태로 만듭니다.
         this.isThrottled = true;
 
-        // 4. 16ms의 쿨타임 타이머를 설정합니다.
+
         this.adjustHeightThrottle = setTimeout(() => {
-            // 16ms가 지나면 쿨타임을 해제하여 다음 요청을 받을 준비를 합니다.
+
             this.isThrottled = false;
         }, 16);
     }
 
-    // STT 업데이트를 처리하는 핸들러
     handleSttUpdate(event, { speaker, text, isFinal, isPartial }) {
         if (text === undefined) return;
 
         const container = this.shadowRoot.querySelector('.transcription-container');
         this._shouldScrollAfterUpdate = container ? (container.scrollTop + container.clientHeight >= container.scrollHeight - 10) : false;
 
-        const lastMessage = this.sttMessages.length > 0 ? this.sttMessages[this.sttMessages.length - 1] : null;
+                const findLastPartialIdx = (spk) => {
+                        for (let i = this.sttMessages.length - 1; i >= 0; i--) {
+                            const m = this.sttMessages[i];
+                            if (m.speaker === spk && m.isPartial) return i;
+                       }
+                        return -1;
+                    };
+            
+                    const newMessages = [...this.sttMessages];
+                    const targetIdx = findLastPartialIdx(speaker);
+            
+                if (isPartial) {
+                        if (targetIdx !== -1) {
+                            newMessages[targetIdx] = {
+                                ...newMessages[targetIdx],
+                                text,
+                                isPartial: true,
+                                isFinal: false,
+                            };
+                        } else {
+                            newMessages.push({
+                                id: this.messageIdCounter++,
+                                speaker,
+                                text,
+                                isPartial: true,
+                                isFinal: false,
+                            });
+                        }
+                    } else if (isFinal) {
+                        if (targetIdx !== -1) {
+                            newMessages[targetIdx] = {
+                                ...newMessages[targetIdx],
+                                text,
+                                isPartial: false,
+                                isFinal: true,
+                            };
+                        } else {
+                            newMessages.push({
+                                id: this.messageIdCounter++,
+                                speaker,
+                                text,
+                                isPartial: false,
+                                isFinal: true,
+                            });
+                        }
+                    }
+            
+                    this.sttMessages = newMessages;
 
-        // 마지막 메시지가 있고, 같은 화자이며, 아직 진행 중(partial)이라면 내용을 교체
-        if (lastMessage && lastMessage.speaker === speaker && lastMessage.isPartial) {
-            const updatedMessage = { ...lastMessage, text: text, isFinal: isFinal, isPartial: isPartial };
-            this.sttMessages = [...this.sttMessages.slice(0, -1), updatedMessage];
-        } else {
-            // 그 외의 경우 (첫 메시지, 다른 화자, 이전 메시지 완료 등) 새 말풍선을 추가
-            this.sttMessages = [...this.sttMessages, { 
-                id: this.messageIdCounter++, 
-                speaker, 
-                text, 
-                isFinal,
-                isPartial
-            }];
-        }
     }
 
-    // scrollToTranscriptionBottom 메서드는 수정할 필요 없습니다.
     scrollToTranscriptionBottom() {
         setTimeout(() => {
             const container = this.shadowRoot.querySelector('.transcription-container');
@@ -872,7 +862,6 @@ export class AssistantView extends LitElement {
             const { ipcRenderer } = window.require('electron');
             
             try {
-                // 1. AskView 열기
                 const isAskViewVisible = await ipcRenderer.invoke('is-window-visible', 'ask');
                 
                 if (!isAskViewVisible) {
@@ -880,7 +869,6 @@ export class AssistantView extends LitElement {
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
                 
-                // 2. 질문을 AskView에 직접 전달 (AskView가 처리)
                 const result = await ipcRenderer.invoke('send-question-to-ask', requestText);
                 
                 if (result.success) {
@@ -894,10 +882,9 @@ export class AssistantView extends LitElement {
         }
     }
 
-    // IPC 리스너 설정
     connectedCallback() {
         super.connectedCallback();
-        this.startTimer(); // 타이머 시작
+        this.startTimer();
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.on('stt-update', this.handleSttUpdate);
@@ -908,7 +895,6 @@ export class AssistantView extends LitElement {
                 if (!wasActive && isActive) {
                     this.hasCompletedRecording = false;
                 }
-                
                 if (wasActive && !isActive) {
                     this.hasCompletedRecording = true;
                     
@@ -921,9 +907,8 @@ export class AssistantView extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        this.stopTimer(); // 타이머 정지
+        this.stopTimer();
         
-        // Throttle 정리
         if (this.adjustHeightThrottle) {
             clearTimeout(this.adjustHeightThrottle);
             this.adjustHeightThrottle = null;
@@ -943,33 +928,25 @@ export class AssistantView extends LitElement {
     firstUpdated() {
         super.firstUpdated();
         
-        // 초기 로드 시 한 번만 높이 조절
         setTimeout(() => this.adjustWindowHeight(), 200);
     }
 
     updated(changedProperties) {
         super.updated(changedProperties);
 
-        // 마크다운 콘텐츠 렌더링
         this.renderMarkdownContent();
 
-        // 1. sttMessages 속성이 변경되었을 때만 아래 로직을 실행합니다.
         if (changedProperties.has('sttMessages')) {
-            // 2. handleSttUpdate에서 저장해 둔 플래그를 확인합니다.
             if (this._shouldScrollAfterUpdate) {
                 this.scrollToTranscriptionBottom();
-                // 플래그를 다시 false로 리셋하여 다음 업데이트에 영향이 없도록 합니다.
                 this._shouldScrollAfterUpdate = false; 
             }
-            // 3. 메시지 변경에 따른 높이 조절을 실행합니다.
             this.adjustWindowHeightThrottled();
         }
         
-        // 뷰 모드 변경 시에만 즉시 높이 조절 (가장 중요한 변경사항)
         if (changedProperties.has('viewMode')) {
             this.adjustWindowHeight();
         }
-        // 다른 속성 변경 시에는 throttled 방식으로 높이 조절
         else if (changedProperties.has('outlines') || 
                  changedProperties.has('analysisRequests') ||
                  changedProperties.has('structuredData')) {
@@ -986,7 +963,6 @@ export class AssistantView extends LitElement {
             ? `Live insights`
             : `Glass is Listening ${this.elapsedTime}`;
     
-        // structuredData가 없거나 비어있을 때 기본값 설정
         const data = this.structuredData || {
             summary: [],
             topic: { header: '', bullets: [] },
@@ -994,7 +970,6 @@ export class AssistantView extends LitElement {
         };
 
         const getSpeakerClass = (speaker) => {
-            // 'Me'를 사용자(me)로 간주하고, 나머지는 상대방(them)으로 처리
             return speaker.toLowerCase() === 'me' ? 'me' : 'them';
         };
     

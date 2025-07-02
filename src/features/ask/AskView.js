@@ -31,7 +31,6 @@ export class AskView extends LitElement {
             user-select: none;
         }
 
-        /* highlight.js 스타일 추가 */
         .response-container pre {
             background: rgba(0, 0, 0, 0.4) !important;
             border-radius: 8px !important;
@@ -54,7 +53,6 @@ export class AskView extends LitElement {
             color: #ffd700 !important;
         }
 
-        /* 코드 블록 구문 강조 색상 */
         .hljs-keyword { color: #ff79c6 !important; }
         .hljs-string { color: #f1fa8c !important; }
         .hljs-comment { color: #6272a4 !important; }
@@ -97,7 +95,6 @@ export class AskView extends LitElement {
             z-index: -1;
         }
 
-        /* Response Header Styles */
         .response-header {
             display: flex;
             justify-content: space-between;
@@ -256,7 +253,6 @@ export class AskView extends LitElement {
             color: rgba(255, 255, 255, 1);
         }
 
-        /* Response Container Styles */
         .response-container {
             flex: 1;
             padding: 16px;
@@ -292,7 +288,6 @@ export class AskView extends LitElement {
             background: rgba(255, 255, 255, 0.3);
         }
 
-        /* Loading dots animation */
         .loading-dots {
             display: flex;
             align-items: center;
@@ -332,7 +327,6 @@ export class AskView extends LitElement {
             }
         }
 
-        /* Line-level copy button styles */
         .response-line {
             position: relative;
             padding: 2px 0;
@@ -382,7 +376,6 @@ export class AskView extends LitElement {
             stroke: rgba(255, 255, 255, 0.9);
         }
 
-        /* Text Input Container Styles */
         .text-input-container {
             display: flex;
             align-items: center;
@@ -428,7 +421,6 @@ export class AskView extends LitElement {
             outline: none;
         }
 
-        /* Markdown content styling */
         .response-line h1,
         .response-line h2,
         .response-line h3,
@@ -518,19 +510,16 @@ export class AskView extends LitElement {
         this.headerAnimationTimeout = null;
         this.streamingTimeout = null;
 
-        // 마크다운 라이브러리 초기화
         this.marked = null;
         this.hljs = null;
         this.isLibrariesLoaded = false;
         this.DOMPurify = null;
         this.isDOMPurifyLoaded = false;
         
-        // 스트리밍 개선을 위한 속성
         this.streamingContainer = null;
         this.accumulatedChunks = '';
         this.lastSafeContent = '';
 
-        // Bind methods
         this.handleSendText = this.handleSendText.bind(this);
         this.handleTextKeydown = this.handleTextKeydown.bind(this);
         this.closeResponsePanel = this.closeResponsePanel.bind(this);
@@ -541,14 +530,11 @@ export class AskView extends LitElement {
         this.handleToggleTextInput = this.handleToggleTextInput.bind(this);
         this.clearResponseContent = this.clearResponseContent.bind(this);
         
-        // 라이브러리 로드
         this.loadLibraries();
     }
 
-    // 라이브러리 로드 메서드
     async loadLibraries() {
         try {
-            // Script 태그를 통해 라이브러리 로드
             if (!window.marked) {
                 await this.loadScript('../../assets/marked-4.3.0.min.js');
             }
@@ -561,12 +547,10 @@ export class AskView extends LitElement {
                 await this.loadScript('../../assets/dompurify-3.0.7.min.js');
             }
 
-            // 로드된 라이브러리 참조
             this.marked = window.marked;
             this.hljs = window.hljs;
             this.DOMPurify = window.DOMPurify;
 
-            // marked 설정
             if (this.marked && this.hljs) {
                 this.marked.setOptions({
                     highlight: (code, lang) => {
@@ -601,7 +585,6 @@ export class AskView extends LitElement {
         }
     }
 
-    // Script 로드 헬퍼 메서드
     loadScript(src) {
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
@@ -612,11 +595,9 @@ export class AskView extends LitElement {
         });
     }
 
-    // 마크다운 파싱 메서드
     parseMarkdown(text) {
         if (!text) return '';
         
-        // 라이브러리가 로드되지 않았으면 원본 텍스트 반환
         if (!this.isLibrariesLoaded || !this.marked) {
             return text;
         }
@@ -625,24 +606,20 @@ export class AskView extends LitElement {
             return this.marked(text);
         } catch (error) {
             console.error('Markdown parsing error in AskView:', error);
-            return text; // 파싱 실패 시 원본 텍스트 반환
+            return text;
         }
     }
 
-    // 스트리밍 중 미완성 코드 블록 자동 닫기
     fixIncompleteCodeBlocks(text) {
         if (!text) return text;
         
-        // ``` 의 개수를 세기
         const codeBlockMarkers = text.match(/```/g) || [];
         const markerCount = codeBlockMarkers.length;
         
-        // 홀수개면 코드 블록이 열려있는 상태 -> 임시로 닫기
         if (markerCount % 2 === 1) {
             return text + '\n```';
         }
         
-        // 짝수개면 모든 코드 블록이 닫혀있는 상태
         return text;
     }
 
@@ -651,7 +628,6 @@ export class AskView extends LitElement {
         
         console.log('📱 AskView connectedCallback - IPC 이벤트 리스너 설정');
 
-        // 창 높이 자동 조절
         this.resizeObserver = new ResizeObserver(entries => {
             for (const entry of entries) {
                 const needed = entry.contentRect.height;
@@ -668,36 +644,30 @@ export class AskView extends LitElement {
 
         this.handleQuestionFromAssistant = (event, question) => {
             console.log('📨 AskView: Received question from AssistantView:', question);
-            // 기존 응답 내용 초기화
             this.currentResponse = '';
             this.streamedResponse = '';
             this.isStreaming = false;
             this.updateResponseContent();
             this.requestUpdate();
             
-            // 즉시 질문 설정하고 로딩 상태로 전환
             this.currentQuestion = question;
             this.isLoading = true;
-            this.showTextInput = false;  // text input 숨기기
+            this.showTextInput = false;
             this.headerText = 'analyzing screen...';
             this.startHeaderAnimation();
             this.requestUpdate();
             
-            // sendMessage 호출
             this.processAssistantQuestion(question);
         };
         
         
-        // IPC 이벤트 리스너
         this.handleAddAskResponse = (event, data) => {
             console.log('📨 AskView: add-ask-response IPC 이벤트 수신!', data);
             
             const { question, response } = data;
             
             this.currentQuestion = question;
-            // 즉시 헤더 애니메이션 시작
             this.startHeaderAnimation();
-            // 스트리밍 시뮬레이션 시작
             this.simulateStreaming(response);
             
             console.log('✅ AskView: 응답 업데이트 완료');
@@ -725,12 +695,11 @@ export class AskView extends LitElement {
                 this.updateResponseContent();
                 this.requestUpdate();
             });
-            // Ask 창이 닫힐 때 응답 내용 초기화
             ipcRenderer.on('window-hide-animation', () => {
                 console.log('📤 Ask window hiding - clearing response content');
                 setTimeout(() => {
                     this.clearResponseContent();
-                }, 250); // 애니메이션 완료 후 초기화
+                }, 250);
             });
             console.log('✅ AskView: IPC 이벤트 리스너 등록 완료');
         }
@@ -776,7 +745,7 @@ export class AskView extends LitElement {
         this.isLoading = false;
         this.isStreaming = false;
         this.headerText = 'AI Response';
-        this.showTextInput = true; // 초기화 시 text input 보이기
+        this.showTextInput = true;
         this.updateResponseContent();
         this.requestUpdate();
     }
@@ -825,7 +794,6 @@ export class AskView extends LitElement {
         let index = 0;
         this.requestUpdate();
 
-        // 스트리밍 컨테이너 초기화
         this.initializeStreamingContainer();
 
         const streamNext = () => {
@@ -836,7 +804,6 @@ export class AskView extends LitElement {
                 this.streamedResponse += chunk;
                 this.accumulatedChunks += chunk;
                 
-                // 성능과 보안을 고려한 스트리밍 업데이트
                 this.updateStreamedContentSafe(chunk);
                 
                 index++;
@@ -854,7 +821,6 @@ export class AskView extends LitElement {
         streamNext();
     }
 
-    // 스트리밍 컨테이너 초기화
     initializeStreamingContainer() {
         const responseContainer = this.shadowRoot?.getElementById('responseContainer');
         if (responseContainer) {
@@ -863,16 +829,13 @@ export class AskView extends LitElement {
         }
     }
 
-    // 안전한 스트리밍 업데이트 (권장사항 적용)
     updateStreamedContentSafe(chunk) {
         if (!this.streamingContainer) return;
 
-        // 보안 검사: 누적된 청크 전체를 검사
         if (this.isDOMPurifyLoaded && this.DOMPurify) {
             const testContent = this.fixIncompleteCodeBlocks(this.accumulatedChunks);
             const sanitized = this.DOMPurify.sanitize(testContent);
             
-            // 위험한 콘텐츠가 감지되면 스트리밍 중지
             if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
                 console.warn('Unsafe content detected, stopping stream');
                 this.isStreaming = false;
@@ -881,33 +844,26 @@ export class AskView extends LitElement {
             }
         }
 
-        // 성능 최적화: append() 사용으로 전체 재렌더링 방지
-        // 단어가 완성될 때마다 렌더링 (공백, 줄바꿈 등을 기준)
         if (chunk.match(/[\s\n,.!?;:]/) || this.accumulatedChunks.length % 10 === 0) {
             this.renderStreamingChunk();
         }
     }
 
-    // 스트리밍 청크 렌더링 (최적화된 버전)
     renderStreamingChunk() {
         if (!this.streamingContainer) return;
 
         const processedResponse = this.fixIncompleteCodeBlocks(this.accumulatedChunks);
         
-        // 보안 검사된 콘텐츠만 렌더링
         if (this.isDOMPurifyLoaded && this.DOMPurify) {
             const sanitized = this.DOMPurify.sanitize(this.renderMarkdown(processedResponse));
             
-            // 전체 콘텐츠를 렌더링하되, 스타일과 구조를 유지
             const tempContainer = document.createElement('div');
             tempContainer.innerHTML = sanitized;
             
-            // 기존 내용을 효율적으로 업데이트
             if (this.streamingContainer.innerHTML !== tempContainer.innerHTML) {
                 this.streamingContainer.innerHTML = tempContainer.innerHTML;
             }
         } else {
-            // DOMPurify가 없을 때는 기본 마크다운 렌더링
             const rendered = this.renderMarkdown(processedResponse);
             if (this.streamingContainer.innerHTML !== rendered) {
                 this.streamingContainer.innerHTML = rendered;
@@ -918,11 +874,9 @@ export class AskView extends LitElement {
     }
 
     updateStreamedContent() {
-        // 레거시 메서드 - 새로운 방식으로 리다이렉트
         if (this.isStreaming) {
             this.renderStreamingChunk();
         } else {
-            // 스트리밍이 끝났을 때만 전체 렌더링
         const responseContainer = this.shadowRoot?.getElementById('responseContainer');
         if (responseContainer && this.streamedResponse) {
                 const processedResponse = this.fixIncompleteCodeBlocks(this.streamedResponse);
@@ -949,17 +903,13 @@ export class AskView extends LitElement {
         const responseContainer = this.shadowRoot?.getElementById('responseContainer');
         if (responseContainer) {
             if (this.currentResponse) {
-                // 최종 응답에서도 코드 블록이 제대로 닫히지 않은 경우 자동 수정
                 const processedResponse = this.fixIncompleteCodeBlocks(this.currentResponse);
                 
-                // 보안 검사 적용
                 let safeContent = processedResponse;
                 if (this.isDOMPurifyLoaded && this.DOMPurify) {
-                    // 각 라인별로 렌더링하기 전에 전체 콘텐츠 보안 검사
                     const fullRendered = this.renderMarkdown(processedResponse);
                     const sanitized = this.DOMPurify.sanitize(fullRendered);
                     
-                    // 위험한 콘텐츠가 감지되면 경고 메시지 표시
                     if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
                         console.warn('Unsafe content detected in final response');
                         responseContainer.innerHTML = '<div class="response-line">⚠️ Content blocked for security reasons</div>';
@@ -971,7 +921,6 @@ export class AskView extends LitElement {
                 responseContainer.innerHTML = lines.map((line, index) => {
                     let renderedLine = this.renderMarkdown(line);
                     
-                    // 개별 라인도 보안 검사
                     if (this.isDOMPurifyLoaded && this.DOMPurify) {
                         renderedLine = this.DOMPurify.sanitize(renderedLine);
                     }
@@ -999,7 +948,6 @@ export class AskView extends LitElement {
                     });
                 });
             } else if (this.isLoading && this.streamedResponse === '') {
-                // 로딩 중이고 아직 스트리밍된 내용이 없을 때만 로딩 점 표시
                 responseContainer.innerHTML = `
                     <div class="loading-dots">
                         <div class="loading-dot"></div>
@@ -1016,12 +964,10 @@ export class AskView extends LitElement {
     renderMarkdown(content) {
         if (!content) return '';
         
-        // 새로운 마크다운 파싱 사용
         if (this.isLibrariesLoaded && this.marked) {
             return this.parseMarkdown(content);
         }
         
-        // 폴백: 기본 마크다운 파싱
         return content
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -1040,7 +986,6 @@ export class AskView extends LitElement {
             try {
                 const result = await window.pickleGlass.sendMessage(question, { hideTextInput: false });
                 if (result.success) {
-                    // 스트리밍 시뮬레이션
                     this.simulateStreaming(result.response);
                 } else {
                     this.isLoading = false;
@@ -1063,10 +1008,8 @@ export class AskView extends LitElement {
     async handleCopy() {
         if (this.copyState === 'copied') return;
 
-        // 원본 텍스트를 복사 (마크다운 형태가 아닌 순수 텍스트)
         let responseToCopy = this.currentResponse;
         
-        // 보안 검사: 안전하지 않은 콘텐츠는 복사하지 않음
         if (this.isDOMPurifyLoaded && this.DOMPurify) {
             const testHtml = this.renderMarkdown(responseToCopy);
             const sanitized = this.DOMPurify.sanitize(testHtml);
@@ -1100,7 +1043,6 @@ export class AskView extends LitElement {
     }
 
     async handleLineCopy(lineIndex) {
-        // 원본 응답에서 라인 가져오기 (자동 추가된 ``` 제외)
         const originalLines = this.currentResponse.split('\n');
         const lineToCopy = originalLines[lineIndex];
 
@@ -1140,11 +1082,9 @@ export class AskView extends LitElement {
         this.currentQuestion = text;
         this.lineCopyState = {};
         
-        // 텍스트 입력창 숨기기
         this.showTextInput = false;
         this.requestUpdate();
         
-        // 헤더 애니메이션 시작
         this.startHeaderAnimation();
         
         if (window.pickleGlass && window.pickleGlass.sendMessage) {
@@ -1154,7 +1094,6 @@ export class AskView extends LitElement {
             try {
                 const result = await window.pickleGlass.sendMessage(text);
                 if (result.success) {
-                    // 스트리밍 시뮬레이션
                     this.simulateStreaming(result.response);
                 } else {
                     this.isLoading = false;
@@ -1257,7 +1196,7 @@ export class AskView extends LitElement {
 
                 <!-- Response Container -->
                 <div class="response-container ${!hasResponse ? 'hidden' : ''}" id="responseContainer">
-                    <!-- 내용은 updateResponseContent()에서 동적으로 생성 -->
+                    <!-- Content is dynamically generated in updateResponseContent() -->
                 </div>
 
                 <!-- Text Input Container -->

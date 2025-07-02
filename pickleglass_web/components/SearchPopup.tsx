@@ -18,14 +18,12 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  // Focus input when popup opens
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus()
     }
   }, [isOpen])
 
-  // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -75,7 +73,6 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
       onClick={handleBackgroundClick}
     >
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
-        {/* Search Header */}
         <div className="flex items-center px-4 py-3">
           <Search className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
           <input
@@ -94,7 +91,6 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
           </button>
         </div>
 
-        {/* Helper Text */}
         <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
           <div className="flex items-center text-sm text-gray-600">
             <span>Type</span>
@@ -105,7 +101,6 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
           </div>
         </div>
 
-        {/* Search Results */}
         {searchQuery && (
           <div className="max-h-[400px] overflow-y-auto">
             {isLoading ? (

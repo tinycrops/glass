@@ -12,7 +12,6 @@ class APIClient {
             }
         });
 
-        // 응답 인터셉터 - 에러 처리
         this.client.interceptors.response.use(
             (response) => response,
             (error) => {
@@ -26,7 +25,6 @@ class APIClient {
         );
     }
 
-    // 단일 사용자 시스템에서는 초기화만 필요
     async initialize() {
         try {
             const response = await this.client.get('/api/auth/status');
@@ -47,7 +45,6 @@ class APIClient {
         }
     }
 
-    // API 키 관리
     async saveApiKey(apiKey) {
         try {
             const response = await this.client.post('/api/user/api-key', { apiKey });
@@ -68,7 +65,6 @@ class APIClient {
         }
     }
 
-    // Batched API call to get multiple user data types efficiently
     async getUserBatchData(includes = ['profile', 'context', 'presets']) {
         try {
             const includeParam = includes.join(',');
@@ -80,7 +76,6 @@ class APIClient {
         }
     }
 
-    // Individual API methods
     async getUserContext() {
         try {
             const response = await this.client.get('/api/user/context');
@@ -131,7 +126,6 @@ class APIClient {
         }
     }
 
-    // 프리셋 템플릿 조회 (기본 프리셋들)
     async getPresetTemplates() {
         try {
             const response = await this.client.get('/api/preset-templates');
@@ -152,7 +146,6 @@ class APIClient {
         }
     }
 
-    // 사용자 검색
     async searchUsers(name = '') {
         try {
             const response = await this.client.get('/api/users/search', {
@@ -175,7 +168,6 @@ class APIClient {
         }
     }
 
-    // 대화 세션 관리
     async saveConversationSession(sessionId, conversationHistory) {
         try {
             const payload = {
@@ -220,7 +212,6 @@ class APIClient {
         }
     }
 
-    // 동기화 관련
     async getSyncStatus() {
         try {
             const response = await this.client.get('/api/sync/status');
@@ -242,7 +233,6 @@ class APIClient {
     }
 }
 
-// 싱글톤 인스턴스
 const apiClient = new APIClient();
 
 module.exports = apiClient; 

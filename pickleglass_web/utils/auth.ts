@@ -18,8 +18,7 @@ export const useAuth = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // Firebase user is signed in. This is "Hosting Service Mode".
-        console.log('🔥 Firebase 모드 활성화:', firebaseUser.uid);
+        console.log('🔥 Firebase mode activated:', firebaseUser.uid);
         setMode('firebase');
         
         let profile: UserProfile = {
@@ -28,31 +27,27 @@ export const useAuth = () => {
           email: firebaseUser.email || 'no-email@example.com',
         };
         
-        // Firestore에 사용자 정보 생성/확인
         try {
           profile = await findOrCreateUser(profile);
-          console.log('✅ Firestore 사용자 생성/확인 완료:', profile);
+          console.log('✅ Firestore user created/verified:', profile);
         } catch (error) {
-          console.error('❌ Firestore 사용자 생성/확인 실패:', error);
+          console.error('❌ Firestore user creation/verification failed:', error);
         }
 
         setUser(profile);
         setUserInfo(profile);
         
-        // Notify the Electron main process of the user change
         if (window.ipcRenderer) {
           window.ipcRenderer.send('set-current-user', profile.uid);
         }
 
       } else {
-        // No user is signed in. Fallback to "Local Mode".
-        console.log('🏠 로컬 모드 활성화');
+        console.log('🏠 Local mode activated');
         setMode('local');
         
         setUser(defaultLocalUser);
-        setUserInfo(defaultLocalUser); // Sync with localStorage
+        setUserInfo(defaultLocalUser);
 
-        // Notify the Electron main process of the user change
         if (window.ipcRenderer) {
           window.ipcRenderer.send('set-current-user', defaultLocalUser.uid);
         }
@@ -60,7 +55,6 @@ export const useAuth = () => {
       setIsLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, [])
 

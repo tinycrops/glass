@@ -1,5 +1,5 @@
 const OpenAI = require('openai');
-const WebSocket = require('ws'); // ws 모듈을 명시적으로 사용합니다.
+const WebSocket = require('ws');
 
 /**
  * Creates and returns an OpenAI client instance for STT (Speech-to-Text).
@@ -35,17 +35,16 @@ async function connectToOpenAiSession(key, config, keyType) {
         throw new Error('keyType must be either "apiKey" or "vKey".');
     }
 
-    // 1) URL과 헤더 결정
     const wsUrl = keyType === 'apiKey'
         ? 'wss://api.openai.com/v1/realtime?intent=transcription'
         : 'wss://api.portkey.ai/v1/realtime?intent=transcription';
 
     const headers = keyType === 'apiKey'
-        ? {                                   // OpenAI Key
+        ? {
             'Authorization': `Bearer ${key}`,
             'OpenAI-Beta' : 'realtime=v1',
           }
-        : {                                   // Portkey vKey
+        : {
             'x-portkey-api-key'   : 'gRv2UGRMq6GGLJ8aVEB4e7adIewu',
             'x-portkey-virtual-key': key,
             'OpenAI-Beta'         : 'realtime=v1',
@@ -57,10 +56,9 @@ async function connectToOpenAiSession(key, config, keyType) {
         ws.onopen = () => {
             console.log("WebSocket session opened.");
 
-            // ✅ 수정: type을 최상위로, 나머지 설정을 session 객체 안으로 이동
             const sessionConfig = {
-                type: 'transcription_session.update', // 최상위 type 키
-                session: {                         // 나머지 설정을 담는 session 키
+                type: 'transcription_session.update',
+                session: {
                     input_audio_format: 'pcm16',
                     input_audio_transcription: {
                         model: 'gpt-4o-mini-transcribe',
@@ -81,20 +79,18 @@ async function connectToOpenAiSession(key, config, keyType) {
             
             ws.send(JSON.stringify(sessionConfig));
             
-            // Resolve with the session object containing methods to interact with the WebSocket
             resolve({
                 sendRealtimeInput: (audioData) => {
                     if (ws.readyState === WebSocket.OPEN) {
                         const message = {
                             type: 'input_audio_buffer.append',
-                            audio: audioData // Base64 인코딩된 오디오 데이터
+                            audio: audioData
                         };
                         ws.send(JSON.stringify(message));
                     }
                 },
                 close: () => {
                     if (ws.readyState === WebSocket.OPEN) {
-                         // 정상 종료를 위해 close 메시지를 보낼 수 있습니다 (API 사양에 따라 다름)
                         ws.send(JSON.stringify({ type: 'session.close' }));
                         ws.close(1000, 'Client initiated close.');
                     }
@@ -102,7 +98,6 @@ async function connectToOpenAiSession(key, config, keyType) {
             });
         };
 
-        // Assign event handlers from config
         ws.onmessage = (event) => {
             const message = JSON.parse(event.data);
             if (config.callbacks && config.callbacks.onmessage) {
@@ -115,7 +110,7 @@ async function connectToOpenAiSession(key, config, keyType) {
             if (config.callbacks && config.callbacks.onerror) {
                 config.callbacks.onerror(error);
             }
-            reject(error); // Promise를 reject하여 오류를 전파
+            reject(error);
         };
 
         ws.onclose = (event) => {
@@ -134,7 +129,6 @@ async function connectToOpenAiSession(key, config, keyType) {
  * @returns {object} Model object with generateContent method
  */
 function getOpenAiGenerativeModel(client, model = 'gpt-4.1') {
-    // 이 함수는 STT와 직접적인 관련이 없으므로 원본을 유지합니다.
     return {
         generateContent: async (parts) => {
             const messages = [];
@@ -176,10 +170,8 @@ function getOpenAiGenerativeModel(client, model = 'gpt-4.1') {
 }
 
 module.exports = {
-    // Live STT
     createOpenAiClient,
     connectToOpenAiSession,
-    // Text / Vision
     createOpenAiGenerativeClient,
     getOpenAiGenerativeModel,
 };

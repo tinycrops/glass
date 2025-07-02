@@ -1,7 +1,6 @@
 const { notarize } = require('@electron/notarize');
 
 exports.notarizeApp = async function (context) {
-  // Notarize only for macOS builds
   if (context.electronPlatformName !== 'darwin') {
     return;
   }
@@ -12,7 +11,6 @@ exports.notarizeApp = async function (context) {
   const appName = context.packager.appInfo.productFilename;
   const appPath = `${appOutDir}/${appName}.app`;
 
-  // Ensure Apple ID and password are set
   if (!process.env.APPLE_ID || !process.env.APPLE_ID_PASSWORD || !process.env.APPLE_TEAM_ID) {
     throw new Error('APPLE_ID, APPLE_ID_PASSWORD, and APPLE_TEAM_ID environment variables are required for notarization.');
   }

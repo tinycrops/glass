@@ -9,11 +9,11 @@ let micMediaStream = null;
 let micAudioProcessor = null;
 let audioBuffer = [];
 const SAMPLE_RATE = 24000;
-const AUDIO_CHUNK_DURATION = 0.1; // 500ms -> 100ms로 복원하여 더 빠른 반응성 추구
-const BUFFER_SIZE = 4096; // 적절한 버퍼 크기로 복원
+const AUDIO_CHUNK_DURATION = 0.1;
+const BUFFER_SIZE = 4096;
 
 let systemAudioBuffer = [];
-const MAX_SYSTEM_BUFFER_SIZE = 10; // 최대 10개의 청크 저장
+const MAX_SYSTEM_BUFFER_SIZE = 10;
 
 // let hiddenVideo = null;
 // let offscreenCanvas = null;
@@ -21,10 +21,8 @@ const MAX_SYSTEM_BUFFER_SIZE = 10; // 최대 10개의 청크 저장
 let currentImageQuality = 'medium'; // Store current image quality for manual screenshots
 let lastScreenshotBase64 = null; // Store the latest screenshot
 
-// 실시간 대화내역 저장 (chatModel용) - ✅ 변경: 텍스트 배열 ["me: ~~~", "them: ~~~", ...]
 let realtimeConversationHistory = [];
 
-// 새로운 시스템 프롬프트 (cluely_chat 프롬프트) - OpenAI 형태로 변경
 const CLUELY_CHAT_SYSTEM_PROMPT = `<core_identity>
 You are Cluely, developed and created by Cluely, and you are the user's live-meeting co-pilot.
 </core_identity>
@@ -189,7 +187,6 @@ Make sure to **reference context** fully if it is provided (ex. if all/the entir
 {{CONVERSATION_HISTORY}}`;
 
 
-// convertFloat32ToInt16 함수 다음에 추가
 function base64ToFloat32Array(base64) {
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
@@ -214,18 +211,16 @@ async function queryLoginState() {
     return { user, isLoggedIn: !!user };
   }
 
-// renderer.js - 더 강력한 AEC 클래스
 class SimpleAEC {
     constructor() {
-        this.adaptiveFilter = new Float32Array(1024); // 필터 크기 감소 (2048 → 1024)
-        this.mu = 0.2; // 적응 속도 감소 (0.5 → 0.2)
-        this.echoDelay = 100; // 지연 시간 감소 (200 → 100)
+        this.adaptiveFilter = new Float32Array(1024);
+        this.mu = 0.2;
+        this.echoDelay = 100;
         this.sampleRate = 24000;
         this.delaySamples = Math.floor((this.echoDelay / 1000) * this.sampleRate);
         
-        // 추가 파라미터
-        this.echoGain = 0.5; // 에코 계수 감소 (0.95 → 0.5)
-        this.noiseFloor = 0.01; // 노이즈 플로어 감소 (0.02 → 0.01)
+        this.echoGain = 0.5;
+        this.noiseFloor = 0.01;
         
         console.log('🎯 Weakened AEC initialized');
     }
@@ -237,48 +232,39 @@ class SimpleAEC {
         
         const output = new Float32Array(micData.length);
         
-        // 크로스 코릴레이션으로 최적 지연 찾기
         const optimalDelay = this.findOptimalDelay(micData, systemData);
         
         for (let i = 0; i < micData.length; i++) {
             let echoEstimate = 0;
             
-            // 검색 범위 축소 (-500 ~ 500)
             for (let d = -500; d <= 500; d += 100) {
                 const delayIndex = i - optimalDelay - d;
                 if (delayIndex >= 0 && delayIndex < systemData.length) {
-                    // 가중치를 적용한 에코 추정
-                    const weight = Math.exp(-Math.abs(d) / 1000); // 감쇠 속도 완화
+                    const weight = Math.exp(-Math.abs(d) / 1000);
                     echoEstimate += systemData[delayIndex] * this.echoGain * weight;
                 }
             }
             
-            // 에코 제거 (더 약하게)
-            output[i] = micData[i] - (echoEstimate * 0.5); // 추가로 0.5를 곱해 효과 감소
+            output[i] = micData[i] - (echoEstimate * 0.5);
             
-            // 더 관대한 노이즈 게이팅
             if (Math.abs(output[i]) < this.noiseFloor) {
-                output[i] *= 0.5; // 완전히 제거하지 않고 감쇠만
+                output[i] *= 0.5;
             }
             
-            // 추가 필터링 약화
             if (this.isSimilarToSystem(output[i], systemData, i, optimalDelay)) {
-                output[i] *= 0.5; // 0.1 → 0.5로 변경하여 덜 감쇠
+                output[i] *= 0.5;
             }
             
-            // 클리핑 방지
             output[i] = Math.max(-1, Math.min(1, output[i]));
         }
         
         return output;
     }
     
-    // 크로스 코릴레이션으로 최적 지연 찾기
     findOptimalDelay(micData, systemData) {
         let maxCorr = 0;
         let optimalDelay = this.delaySamples;
         
-        // 검색 범위 축소
         for (let delay = 0; delay < 5000 && delay < systemData.length; delay += 200) {
             let corr = 0;
             let count = 0;
@@ -301,10 +287,9 @@ class SimpleAEC {
         
         return optimalDelay;
     }
-    
-    // 시스템 오디오와 유사성 검사 (더 관대하게)
+
     isSimilarToSystem(sample, systemData, index, delay) {
-        const windowSize = 50; // 윈도우 크기 감소 (100 → 50)
+        const windowSize = 50;
         let similarity = 0;
         
         for (let i = -windowSize; i <= windowSize; i++) {
@@ -314,7 +299,6 @@ class SimpleAEC {
             }
         }
         
-        // 임계값 증가 (0.1 → 0.2)로 더 관대하게
         return similarity / (2 * windowSize + 1) < 0.2;
     }
 }
@@ -327,12 +311,10 @@ const isMacOS = process.platform === 'darwin';
 
 window.pickleGlass = window.pickleGlass || {};
 
-// Token tracking system for rate limiting
 let tokenTracker = {
-    tokens: [], // Array of {timestamp, count, type} objects
+    tokens: [],
     audioStartTime: null,
 
-    // Add tokens to the tracker
     addTokens(count, type = 'image') {
         const now = Date.now();
         this.tokens.push({
@@ -341,25 +323,19 @@ let tokenTracker = {
             type: type,
         });
 
-        // Clean old tokens (older than 1 minute)
         this.cleanOldTokens();
     },
 
-    // Calculate image tokens based on OpenAI pricing (simplified)
     calculateImageTokens(width, height) {
-        // Simplified calculation for OpenAI - images are charged per request, not tokens
-        // But we'll use a similar system for rate limiting
         const pixels = width * height;
         if (pixels <= 384 * 384) {
-            return 85; // Base cost for small images
+            return 85;
         }
         
-        // Larger images cost more
         const tiles = Math.ceil(pixels / (768 * 768));
         return tiles * 85;
     },
 
-    // Track audio tokens continuously (simplified for OpenAI)
     trackAudioTokens() {
         if (!this.audioStartTime) {
             this.audioStartTime = Date.now();
@@ -369,7 +345,6 @@ let tokenTracker = {
         const now = Date.now();
         const elapsedSeconds = (now - this.audioStartTime) / 1000;
 
-        // Simplified audio token calculation
         const audioTokens = Math.floor(elapsedSeconds * 16);
 
         if (audioTokens > 0) {
@@ -378,21 +353,17 @@ let tokenTracker = {
         }
     },
 
-    // Clean tokens older than 1 minute
     cleanOldTokens() {
         const oneMinuteAgo = Date.now() - 60 * 1000;
         this.tokens = this.tokens.filter(token => token.timestamp > oneMinuteAgo);
     },
 
-    // Get total tokens in the last minute
     getTokensInLastMinute() {
         this.cleanOldTokens();
         return this.tokens.reduce((total, token) => total + token.count, 0);
     },
 
-    // Check if we should throttle based on settings
     shouldThrottle() {
-        // Get rate limiting settings from localStorage
         const throttleEnabled = localStorage.getItem('throttleTokens') === 'true';
         if (!throttleEnabled) {
             return false;
@@ -497,19 +468,16 @@ ipcRenderer.on('stt-update', (event, data) => {
     console.log('Renderer.js stt-update', data);
     const { speaker, text, isFinal, isPartial, timestamp } = data;
     
-    // 실시간 STT 결과를 콘솔에 표시 (중간 결과 포함)
     if (isPartial) {
         console.log(`🔄 [${speaker} - partial]: ${text}`);
     } else if (isFinal) {
         console.log(`✅ [${speaker} - final]: ${text}`);
         
-        // ✅ 변경: 최종 결과만 실시간 대화내역에 텍스트 형태로 저장
-        const speakerText = speaker.toLowerCase(); // 'Me' -> 'me', 'Them' -> 'them'
+        const speakerText = speaker.toLowerCase();
         const conversationText = `${speakerText}: ${text.trim()}`;
         
         realtimeConversationHistory.push(conversationText);
         
-        // 최대 30턴만 유지 (메모리 관리)
         if (realtimeConversationHistory.length > 30) {
             realtimeConversationHistory = realtimeConversationHistory.slice(-30);
         }
@@ -518,7 +486,6 @@ ipcRenderer.on('stt-update', (event, data) => {
         console.log(`📋 Latest text: ${conversationText}`);
     }
     
-    // UI 업데이트 (실시간 트랜스크립션 표시)
     if (pickleGlass.e() && typeof pickleGlass.e().updateRealtimeTranscription === 'function') {
         pickleGlass.e().updateRealtimeTranscription({
             speaker,
@@ -616,7 +583,7 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                 });
 
                 console.log('macOS microphone capture started');
-                setupMicProcessing(micMediaStream); // 공통 로직(아래 정의)
+                setupMicProcessing(micMediaStream);
             } catch (micErr) {
                 console.warn('Failed to get microphone on macOS:', micErr);
             }
@@ -755,13 +722,10 @@ function setupMicProcessing(micStream) {
         while (audioBuffer.length >= samplesPerChunk) {
             let chunk = audioBuffer.splice(0, samplesPerChunk);
             
-            // 🎯 AEC 처리 적용
             if (aecProcessor && systemAudioBuffer.length > 0) {
-                // 가장 최근 시스템 오디오 가져오기
                 const latestSystemAudio = systemAudioBuffer[systemAudioBuffer.length - 1];
                 const systemFloat32 = base64ToFloat32Array(latestSystemAudio.data);
                 
-                // AEC 처리
                 const processedChunk = aecProcessor.process(
                     new Float32Array(chunk),
                     systemFloat32
@@ -975,27 +939,22 @@ async function getCurrentScreenshot() {
     }
 }
 
-// 대화내역을 포맷하는 함수 - ✅ 변경: 텍스트 배열 사용
 function formatRealtimeConversationHistory() {
     if (realtimeConversationHistory.length === 0) return 'No conversation history available.';
     
-    // 최근 30개 원소를 줄바꿈으로 연결
     return realtimeConversationHistory
         .slice(-30)
         .join('\n');
 }
 
-// 새로운 chatModel을 생성하고 질문 처리 - OpenAI로 변경
 async function sendMessage(userPrompt, options = {}) {
     if (!userPrompt || userPrompt.trim().length === 0) {
         console.warn('Cannot process empty message');
         return { success: false, error: 'Empty message' };
     }
 
-    // sendMessage 호출 시 AskView의 응답 내용 초기화
     if (window.require) {
         const { ipcRenderer } = window.require('electron');
-        // AskView가 열려있다면 응답 내용 초기화
         const isAskVisible = await ipcRenderer.invoke('is-window-visible', 'ask');
         if (isAskVisible) {
             ipcRenderer.send('clear-ask-response');
@@ -1019,14 +978,11 @@ async function sendMessage(userPrompt, options = {}) {
             console.warn('Failed to get screenshot:', error);
         }
         
-        // 2. 실시간 대화내역 포맷
         const conversationHistory = formatRealtimeConversationHistory();
         console.log(`📝 Using conversation history: ${realtimeConversationHistory.length} texts`);
         
-        // 3. 시스템 프롬프트에 대화내역 삽입
         const systemPrompt = CLUELY_CHAT_SYSTEM_PROMPT.replace('{{CONVERSATION_HISTORY}}', conversationHistory);
         
-        // 4. API 키 가져오기 (Stashed changes' logic)
         let API_KEY = localStorage.getItem('openai_api_key');
         
         if (!API_KEY && window.require) {
@@ -1038,7 +994,6 @@ async function sendMessage(userPrompt, options = {}) {
             }
         }
         
-        // 환경변수 fallback (Updated upstream + Stashed changes)
         if (!API_KEY) {
             API_KEY = process.env.OPENAI_API_KEY
         }
@@ -1049,7 +1004,6 @@ async function sendMessage(userPrompt, options = {}) {
         
         console.log('[Renderer] Using API key for message request');
         
-        // 5. 요청 구성
         const messages = [
             {
                 role: 'system',
@@ -1066,7 +1020,6 @@ async function sendMessage(userPrompt, options = {}) {
             }
         ];
         
-        // 6. 스크린샷이 있으면 추가
         if (screenshotBase64) {
             messages[1].content.push({
                 type: 'image_url',
@@ -1077,10 +1030,9 @@ async function sendMessage(userPrompt, options = {}) {
             console.log('📷 Screenshot included in message request');
         }
 
-        const { isLoggedIn } = await queryLoginState();   // 🆕 매번 확인
+        const { isLoggedIn } = await queryLoginState();
         const keyType = isLoggedIn ? 'vKey' : 'apiKey';
 
-        // 7. OpenAI API 호출 (Electron에서는 직접 fetch 사용)
         console.log('🚀 Sending request to OpenAI...');
         const { url, headers } = keyType === 'apiKey'
             ? {
@@ -1125,7 +1077,6 @@ async function sendMessage(userPrompt, options = {}) {
     }
 }
 
-// 현재 스크린샷 캡처 함수
 async function captureCurrentScreenshot() {
     return new Promise((resolve, reject) => {
         if (!offscreenCanvas || !offscreenContext) {
@@ -1133,7 +1084,6 @@ async function captureCurrentScreenshot() {
             return;
         }
         
-        // 현재 캔버스 상태로 스크린샷 생성
         offscreenCanvas.toBlob(
             async (blob) => {
                 if (!blob) {
@@ -1156,12 +1106,10 @@ async function captureCurrentScreenshot() {
 }
 
 
-// Conversation storage functions using API client
 const apiClient = window.require ? window.require('../common/services/apiClient') : undefined;
 
 async function initConversationStorage() {
     try {
-        // Check API connection instead of SQLite
         const isOnline = await apiClient.checkConnection();
         console.log('API 연결 상태:', isOnline);
         return isOnline;

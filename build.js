@@ -1,7 +1,6 @@
 const esbuild = require('esbuild');
 const path = require('path');
 
-// 공통 설정
 const baseConfig = {
     bundle: true,
     platform: 'browser',
@@ -14,13 +13,11 @@ const baseConfig = {
     },
 };
 
-// 빌드할 파일 목록
 const entryPoints = [
     { in: 'src/app/HeaderController.js', out: 'public/build/header' },
     { in: 'src/app/PickleGlassApp.js', out: 'public/build/content' },
 ];
 
-// 빌드 실행 함수
 async function build() {
     try {
         console.log('Building renderer process code...');
@@ -36,7 +33,6 @@ async function build() {
     }
 }
 
-// 개발용 watch 모드 실행 함수
 async function watch() {
     try {
         const contexts = await Promise.all(entryPoints.map(point => esbuild.context({
@@ -54,7 +50,6 @@ async function watch() {
     }
 }
 
-// 커맨드 라인 인자에 따라 build 또는 watch 실행
 if (process.argv.includes('--watch')) {
     watch();
 } else {

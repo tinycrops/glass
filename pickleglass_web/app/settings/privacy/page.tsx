@@ -26,13 +26,11 @@ export default function PrivacySettingsPage() {
   return (
     <div className="bg-stone-50 min-h-screen">
       <div className="px-8 py-8">
-        {/* Header */}
         <div className="mb-6">
           <p className="text-xs text-gray-500 mb-1">Settings</p>
           <h1 className="text-3xl font-bold text-gray-900">Personal settings</h1>
         </div>
         
-        {/* Tabs */}
         <div className="mb-8">
           <nav className="flex space-x-10">
             {tabs.map((tab) => (
@@ -51,9 +49,7 @@ export default function PrivacySettingsPage() {
           </nav>
         </div>
 
-        {/* Privacy Content */}
         <div className="grid grid-cols-2 gap-6">
-          {/* Privacy Policy Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col">
             <div className="flex-grow">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Privacy Policy</h3>
@@ -72,7 +68,6 @@ export default function PrivacySettingsPage() {
             </div>
           </div>
 
-          {/* Terms of Service Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 flex flex-col">
             <div className="flex-grow">
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Terms of Service</h3>

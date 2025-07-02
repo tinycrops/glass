@@ -5,7 +5,6 @@ const { notarizeApp } = require('./notarize');
 module.exports = {
     packagerConfig: {
         asar: {
-        // .node + .dylib + sharp 하위 모두 unpack
             unpack:
                 '**/*.node,**/*.dylib,' +
                 '**/node_modules/{sharp,@img}/**/*'
@@ -27,15 +26,10 @@ module.exports = {
             'entitlements-inherit': 'entitlements.plist',
         },
         osxNotarize: {
-            tool: 'notarytool',                // 기본값 'notarytool' (Xcode 13+)
-            appleId: process.env.APPLE_ID,     // your@appleid.com
-            appleIdPassword: process.env.APPLE_ID_PASSWORD, // 앱 전용 비밀번호
-            teamId: process.env.APPLE_TEAM_ID  // 10-자리 팀 ID
-            /* 또는
-            appleApiKey: './AuthKey_XXXX.p8',
-            appleApiKeyId: 'XXXX123456',
-            appleApiIssuer: '00000000-0000-0000-0000-000000000000'
-            */
+            tool: 'notarytool',
+            appleId: process.env.APPLE_ID,
+            appleIdPassword: process.env.APPLE_ID_PASSWORD,
+            teamId: process.env.APPLE_TEAM_ID
         }
     },
     rebuildConfig: {},
@@ -73,8 +67,6 @@ module.exports = {
             name: '@electron-forge/plugin-auto-unpack-natives',
             config: {},
         },
-        // Fuses are used to enable/disable various Electron functionality
-        // at package time, before code signing the application
         new FusesPlugin({
             version: FuseVersion.V1,
             [FuseV1Options.RunAsNode]: false,

@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [isElectronMode, setIsElectronMode] = useState(false)
 
   useEffect(() => {
-    // Check electron mode from URL parameters
     const urlParams = new URLSearchParams(window.location.search)
     const mode = urlParams.get('mode')
     setIsElectronMode(mode === 'electron')
@@ -28,13 +27,11 @@ export default function LoginPage() {
       
       if (user) {
         console.log('✅ Google login successful:', user.uid)
-        
-        // Return to electron app via deep link in electron mode
+
         if (isElectronMode) {
           try {
             const idToken = await user.getIdToken()
             
-            // Generate deep link URL
             const deepLinkUrl = `pickleglass://auth-success?` + new URLSearchParams({
               uid: user.uid,
               email: user.email || '',
@@ -44,10 +41,8 @@ export default function LoginPage() {
             
             console.log('🔗 Return to electron app via deep link:', deepLinkUrl)
             
-            // Execute deep link
             window.location.href = deepLinkUrl
             
-            // Guide message to user
             setTimeout(() => {
               alert('Login completed. Please return to Pickle Glass app.')
             }, 1000)
@@ -57,13 +52,11 @@ export default function LoginPage() {
             alert('Login was successful but failed to return to app. Please check the app.')
           }
         } 
-        // IPC handling in webview electron environment
         else if (typeof window !== 'undefined' && window.require) {
           try {
             const { ipcRenderer } = window.require('electron')
             const idToken = await user.getIdToken()
             
-            // Send token to electron
             ipcRenderer.send('firebase-auth-success', {
               uid: user.uid,
               displayName: user.displayName,
@@ -76,7 +69,6 @@ export default function LoginPage() {
             console.error('❌ Electron communication failed:', error)
           }
         } 
-        // Redirect to settings page in pure web
         else {
           router.push('/settings')
         }
@@ -84,7 +76,6 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('❌ Google login failed:', error)
       
-      // Don't show error message if user closed popup
       if (error.code !== 'auth/popup-closed-by-user') {
         alert('An error occurred during login. Please try again.')
       }
@@ -120,7 +111,6 @@ export default function LoginPage() {
             <button
               onClick={() => {
                 if (isElectronMode) {
-                  // Proceed with local mode via deep link in electron mode
                   window.location.href = 'pickleglass://auth-success?uid=default_user&email=contact@pickle.com&displayName=Default%20User'
                 } else {
                   router.push('/settings')

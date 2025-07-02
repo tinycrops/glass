@@ -7,35 +7,27 @@ class Config {
     constructor() {
         this.env = process.env.NODE_ENV || 'development';
         this.defaults = {
-            // API Configuration
             apiUrl: process.env.pickleglass_API_URL || 'http://localhost:9001',
             apiTimeout: 10000,
             
-            // Web Configuration
             webUrl: process.env.pickleglass_WEB_URL || 'http://localhost:3000',
             
-            // Authentication (단일 사용자 시스템이므로 JWT 비활성화)
             enableJWT: false,
             fallbackToHeaderAuth: false,
             
-            // Caching
-            cacheTimeout: 5 * 60 * 1000, // 5 minutes
+            cacheTimeout: 5 * 60 * 1000,
             enableCaching: true,
             
-            // Polling intervals (in milliseconds)
-            syncInterval: 0, // Disabled - no more sync service
-            healthCheckInterval: 30 * 1000, // 30 seconds
+            syncInterval: 0,
+            healthCheckInterval: 30 * 1000,
             
-            // Window Management
             defaultWindowWidth: 400,
             defaultWindowHeight: 60,
             
-            // Features
-            enableOfflineMode: true, // 로컬 SQLite 사용 활성화
-            enableFileBasedCommunication: false, // Disabled
-            enableSQLiteStorage: true, // 로컬 SQLite 저장소 활성화
+            enableOfflineMode: true,
+            enableFileBasedCommunication: false,
+            enableSQLiteStorage: true,
             
-            // Logging
             logLevel: 'info',
             enableDebugLogging: false
         };
@@ -46,7 +38,6 @@ class Config {
     }
     
     loadEnvironmentConfig() {
-        // Override with environment variables
         if (process.env.pickleglass_API_URL) {
             this.config.apiUrl = process.env.pickleglass_API_URL;
             console.log(`[Config] API URL from env: ${this.config.apiUrl}`);
@@ -77,7 +68,6 @@ class Config {
             this.config.enableDebugLogging = process.env.pickleglass_DEBUG === 'true';
         }
         
-        // Environment-specific overrides
         if (this.env === 'production') {
             this.config.enableDebugLogging = false;
             this.config.logLevel = 'warn';
@@ -89,7 +79,6 @@ class Config {
     
     loadUserConfig() {
         try {
-            // Try to load user-specific config
             const userConfigPath = this.getUserConfigPath();
             if (fs.existsSync(userConfigPath)) {
                 const userConfig = JSON.parse(fs.readFileSync(userConfigPath, 'utf-8'));
@@ -121,13 +110,11 @@ class Config {
         return { ...this.config };
     }
     
-    // Save current config to user config file
     saveUserConfig() {
         try {
             const userConfigPath = this.getUserConfigPath();
             const userConfig = { ...this.config };
             
-            // Remove defaults to keep config file clean
             Object.keys(this.defaults).forEach(key => {
                 if (userConfig[key] === this.defaults[key]) {
                     delete userConfig[key];
@@ -141,13 +128,11 @@ class Config {
         }
     }
     
-    // Reset to defaults
     reset() {
         this.config = { ...this.defaults };
         this.loadEnvironmentConfig();
     }
     
-    // Development helpers
     isDevelopment() {
         return this.env === 'development';
     }
@@ -164,7 +149,6 @@ class Config {
     }
 }
 
-// Singleton instance
 const config = new Config();
 
 module.exports = config;

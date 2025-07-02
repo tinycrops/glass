@@ -5,41 +5,36 @@ const os = require('os');
 const util = require('util');
 const execFile = util.promisify(require('child_process').execFile);
 const sharp = require('sharp');
-// Use the shared SQLite client instead of touching backend DB directly
 const sqliteClient = require('../common/services/sqliteClient');
 const fetch = require('node-fetch');
 
 let currentFirebaseUser = null;
 let userFileWatcher = null;
-let isContentProtectionOn = true; // State for content protection
+let isContentProtectionOn = true;
 
 let mouseEventsIgnored = false;
-let lastVisibleWindows = new Set(['header']); // For visibility toggle
-const HEADER_HEIGHT = 60; // Define a constant for the header height
-const DEFAULT_WINDOW_WIDTH = 345; // Define a default width
-const PADDING = 6; // Reduced gap between header and features
+let lastVisibleWindows = new Set(['header']);
+const HEADER_HEIGHT = 60;
+const DEFAULT_WINDOW_WIDTH = 345;
+const PADDING = 6;
 
 const windowPool = new Map();
-let fixedYPosition = 0; // To store the fixed Y position of the header
+let fixedYPosition = 0;
 let lastScreenshot = null;
 let isCapturing = false;
 
 let settingsHideTimer = null;
 
-/**
- * 창 레이아웃 매니저 - 헤더 위치에 따른 동적 배치
- */
 class WindowLayoutManager {
     constructor() {
         this.isUpdating = false;
-        this.PADDING = 80; // 창 간 간격 - Settings 위치 계산용
+        this.PADDING = 80;
     }
     
     updateLayout() {
         if (this.isUpdating) return;
         this.isUpdating = true;
         
-        // 다음 틱에서 실행 (UI 블로킹 방지)
         setImmediate(() => {
             this.positionWindows();
             this.isUpdating = false;
@@ -54,32 +49,25 @@ class WindowLayoutManager {
         const display = screen.getPrimaryDisplay();
         const { width: screenWidth, height: screenHeight } = display.workAreaSize;
         
-        // 헤더 위치 분석
         const headerCenterX = headerBounds.x + headerBounds.width / 2;
         const headerCenterY = headerBounds.y + headerBounds.height / 2;
         
-        // 화면에서의 상대적 위치 계산 (0-1 범위)
         const relativeX = headerCenterX / screenWidth;
         const relativeY = headerCenterY / screenHeight;
         
-        // 동적 배치 전략 결정
         const strategy = this.determineLayoutStrategy(headerBounds, screenWidth, screenHeight, relativeX, relativeY);
         
-        // Listen/Ask 창 그룹 위치 계산
         this.positionFeatureWindows(headerBounds, strategy, screenWidth, screenHeight);
         
-        // Settings 창 위치 계산
         this.positionSettingsWindow(headerBounds, strategy, screenWidth, screenHeight);
     }
     
-    // 레이아웃 전략 결정
     determineLayoutStrategy(headerBounds, screenWidth, screenHeight, relativeX, relativeY) {
         const spaceBelow = screenHeight - (headerBounds.y + headerBounds.height);
         const spaceAbove = headerBounds.y;
         const spaceLeft = headerBounds.x;
         const spaceRight = screenWidth - (headerBounds.x + headerBounds.width);
         
-        // 각 방향별 여유 공간
         const spaces = {
             below: spaceBelow,
             above: spaceAbove,
@@ -87,37 +75,31 @@ class WindowLayoutManager {
             right: spaceRight
         };
         
-        // 창들을 배치할 최적의 방향 결정
         if (spaceBelow >= 400) {
-            // 아래쪽에 충분한 공간이 있으면 아래 배치 (기본)
             return {
                 name: 'below',
                 primary: 'below',
                 secondary: relativeX < 0.5 ? 'right' : 'left'
             };
         } else if (spaceAbove >= 400) {
-            // 위쪽에 공간이 있으면 위 배치
             return {
                 name: 'above',
                 primary: 'above',
                 secondary: relativeX < 0.5 ? 'right' : 'left'
             };
         } else if (relativeX < 0.3 && spaceRight >= 800) {
-            // 헤더가 왼쪽에 있고 오른쪽에 공간이 있으면 오른쪽 배치
             return {
                 name: 'right-side',
                 primary: 'right',
                 secondary: spaceBelow > spaceAbove ? 'below' : 'above'
             };
         } else if (relativeX > 0.7 && spaceLeft >= 800) {
-            // 헤더가 오른쪽에 있고 왼쪽에 공간이 있으면 왼쪽 배치
             return {
                 name: 'left-side',
                 primary: 'left',
                 secondary: spaceBelow > spaceAbove ? 'below' : 'above'
             };
         } else {
-            // 공간이 부족하면 적응형 배치
             return {
                 name: 'adaptive',
                 primary: spaceBelow > spaceAbove ? 'below' : 'above',
@@ -134,13 +116,12 @@ class WindowLayoutManager {
 
         if (!askVisible && !listenVisible) return;
 
-        const PAD = 8; // 창 간격
+        const PAD = 8;
         const headerCenterX = headerBounds.x + headerBounds.width / 2;
 
         let askBounds = askVisible ? ask.getBounds() : null;
         let listenBounds = listenVisible ? listen.getBounds() : null;
 
-        // Case 1: Ask, Listen 둘 다 보일 때
         if (askVisible && listenVisible) {
             const combinedWidth = listenBounds.width + PAD + askBounds.width;
             let groupStartX = headerCenterX - combinedWidth / 2;
@@ -153,7 +134,6 @@ class WindowLayoutManager {
                 case 'above':
                     y = headerBounds.y - Math.max(askBounds.height, listenBounds.height) - PAD;
                     break;
-                // side-by-side 배치는 복잡도가 높으므로 일단 아래/위만 고려
                 default:
                     y = headerBounds.y + headerBounds.height + PAD;
                     break;
@@ -162,7 +142,6 @@ class WindowLayoutManager {
             let listenX = groupStartX;
             let askX = groupStartX + listenBounds.width + PAD;
 
-            // 화면 경계 체크
             if (listenX < PAD) {
                 listenX = PAD;
                 askX = listenX + listenBounds.width + PAD;
@@ -178,7 +157,6 @@ class WindowLayoutManager {
             // console.log(`[Layout] Group Listen at (${Math.round(listenX)}, ${Math.round(y)}), Ask at (${Math.round(askX)}, ${Math.round(y)})`);
 
         } else {
-            // Case 2: 하나만 보일 때
             const win = askVisible ? ask : listen;
             const winBounds = askVisible ? askBounds : listenBounds;
             
@@ -197,7 +175,6 @@ class WindowLayoutManager {
                     break;
             }
 
-            // 화면 경계 체크
             x = Math.max(PAD, Math.min(screenWidth - winBounds.width - PAD, x));
             y = Math.max(PAD, Math.min(screenHeight - winBounds.height - PAD, y));
             
@@ -213,15 +190,12 @@ class WindowLayoutManager {
         if (settings.__lockedByButton) return;
         
         const settingsBounds = settings.getBounds();
-        const PAD = 5; // 설정창은 가까이 배치
+        const PAD = 5;
         
-        // Settings 버튼은 헤더의 맨 오른쪽에 위치
-        // 설정 버튼 바로 아래에 배치 (기본 위치)
-        const buttonPadding = 17; // 헤더 오른쪽 패딩 고려
+        const buttonPadding = 17;
         let x = headerBounds.x + headerBounds.width - settingsBounds.width - buttonPadding;
         let y = headerBounds.y + headerBounds.height + PAD;
         
-        // 다른 보이는 창들과 겹치는지 확인
         const otherVisibleWindows = [];
         ['listen', 'ask'].forEach(name => {
             const win = windowPool.get(name);
@@ -233,42 +207,33 @@ class WindowLayoutManager {
             }
         });
         
-        // 겹침 확인 및 조정
         const settingsNewBounds = { x, y, width: settingsBounds.width, height: settingsBounds.height };
         let hasOverlap = false;
         
         for (const otherWin of otherVisibleWindows) {
             if (this.boundsOverlap(settingsNewBounds, otherWin.bounds)) {
                 hasOverlap = true;
-                // console.log(`[Layout] Settings would overlap with ${otherWin.name}, adjusting position`);
                 break;
             }
         }
         
-        // 겹침이 있으면 대안 위치 시도
         if (hasOverlap) {
-            // 1순위: 헤더 오른쪽 옆에 배치
             x = headerBounds.x + headerBounds.width + PAD;
             y = headerBounds.y;
             settingsNewBounds.x = x;
             settingsNewBounds.y = y;
             
-            // 오른쪽 경계 체크
             if (x + settingsBounds.width > screenWidth - 10) {
-                // 2순위: 헤더 왼쪽 옆에 배치
                 x = headerBounds.x - settingsBounds.width - PAD;
                 settingsNewBounds.x = x;
             }
             
-            // 왼쪽 경계 체크
             if (x < 10) {
-                // 3순위: 헤더 위쪽에 배치
                 x = headerBounds.x + headerBounds.width - settingsBounds.width - buttonPadding;
                 y = headerBounds.y - settingsBounds.height - PAD;
                 settingsNewBounds.x = x;
                 settingsNewBounds.y = y;
                 
-                // 위쪽도 화면 밖이면 다시 아래로 (오른쪽 끝으로 이동)
                 if (y < 10) {
                     x = headerBounds.x + headerBounds.width - settingsBounds.width;
                     y = headerBounds.y + headerBounds.height + PAD;
@@ -276,7 +241,6 @@ class WindowLayoutManager {
             }
         }
         
-        // 최종 화면 경계 체크
         x = Math.max(10, Math.min(screenWidth - settingsBounds.width - 10, x));
         y = Math.max(10, Math.min(screenHeight - settingsBounds.height - 10, y));
         
@@ -286,9 +250,8 @@ class WindowLayoutManager {
         // console.log(`[Layout] Settings positioned at (${x}, ${y}) ${hasOverlap ? '(adjusted for overlap)' : '(default position)'}`);
     }
     
-    // 두 bounds가 겹치는지 확인하는 유틸리티 함수
     boundsOverlap(bounds1, bounds2) {
-        const margin = 10; // 10px 여백으로 겹침 판정
+        const margin = 10;
         return !(
             bounds1.x + bounds1.width + margin < bounds2.x ||
             bounds2.x + bounds2.width + margin < bounds1.x ||
@@ -303,63 +266,57 @@ class WindowLayoutManager {
     }
     
     destroy() {
-        // 정리할 것이 없음
     }
 }
 
 class SmoothMovementManager {
     constructor() {
-        this.stepSize = 80; // 한 번에 이동할 거리 증가 (50 → 80픽셀)
-        this.animationDuration = 300; // 애니메이션 지속 시간 증가 (150 → 300ms)
+        this.stepSize = 80;
+        this.animationDuration = 300;
         this.headerPosition = { x: 0, y: 0 };
         this.isAnimating = false;
-        this.hiddenPosition = null; // 숨겨진 위치 저장
-        this.lastVisiblePosition = null; // 마지막 보였던 위치 저장
+        this.hiddenPosition = null;
+        this.lastVisiblePosition = null;
     }
     
-    // 동적으로 가장 가까운 가장자리로 숨기기
     hideToEdge(edge, callback) {
         const header = windowPool.get('header');
         if (!header || !header.isVisible() || this.isAnimating) return;
         
         console.log(`[Movement] Hiding to ${edge} edge`);
         
-        // 현재 위치 저장 (나중에 복원용)
         const currentBounds = header.getBounds();
         this.lastVisiblePosition = { x: currentBounds.x, y: currentBounds.y };
         this.headerPosition = { x: currentBounds.x, y: currentBounds.y };
         
-        // 화면 정보 가져오기
         const display = screen.getPrimaryDisplay();
         const { width: screenWidth, height: screenHeight } = display.workAreaSize;
         const headerBounds = header.getBounds();
         
-        // 목표 위치 계산 (화면 밖으로)
         let targetX = this.headerPosition.x;
         let targetY = this.headerPosition.y;
         
         switch(edge) {
             case 'top':
-                targetY = -headerBounds.height - 20; // 완전히 위로 사라지기
+                targetY = -headerBounds.height - 20;
                 break;
             case 'bottom':
-                targetY = screenHeight + 20; // 완전히 아래로 사라지기
+                targetY = screenHeight + 20;
                 break;
             case 'left':
-                targetX = -headerBounds.width - 20; // 완전히 왼쪽으로 사라지기
+                targetX = -headerBounds.width - 20;
                 break;
             case 'right':
-                targetX = screenWidth + 20; // 완전히 오른쪽으로 사라지기
+                targetX = screenWidth + 20;
                 break;
         }
         
         this.hiddenPosition = { x: targetX, y: targetY, edge };
         
-        // 부드러운 사라짐 애니메이션
         this.isAnimating = true;
         const startX = this.headerPosition.x;
         const startY = this.headerPosition.y;
-        const duration = 400; // 부드럽게 사라지기
+        const duration = 400;
         const startTime = Date.now();
         
         const animate = () => {
@@ -371,7 +328,6 @@ class SmoothMovementManager {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             
-            // easeInCubic 이징 (점점 빨라지면서 사라지기)
             const eased = progress * progress * progress;
             
             const currentX = startX + (targetX - startX) * eased;
@@ -386,9 +342,8 @@ class SmoothMovementManager {
             header.setPosition(Math.round(currentX), Math.round(currentY));
             
             if (progress < 1) {
-                setTimeout(animate, 8); // 120fps
+                setTimeout(animate, 8);
             } else {
-                // 사라짐 애니메이션 완료
                 this.headerPosition = { x: targetX, y: targetY };
                 this.isAnimating = false;
                 
@@ -401,26 +356,22 @@ class SmoothMovementManager {
         animate();
     }
     
-    // 숨겨진 위치에서 원래 위치로 부드럽게 나타나기
     showFromEdge(callback) {
         const header = windowPool.get('header');
         if (!header || this.isAnimating || !this.hiddenPosition || !this.lastVisiblePosition) return;
         
         console.log(`[Movement] Showing from ${this.hiddenPosition.edge} edge`);
         
-        // 숨겨진 위치에서 시작
         header.setPosition(this.hiddenPosition.x, this.hiddenPosition.y);
         this.headerPosition = { x: this.hiddenPosition.x, y: this.hiddenPosition.y };
         
-        // 목표 위치 (원래 보였던 위치)
         const targetX = this.lastVisiblePosition.x;
         const targetY = this.lastVisiblePosition.y;
         
-        // 부드러운 나타남 애니메이션
         this.isAnimating = true;
         const startX = this.headerPosition.x;
         const startY = this.headerPosition.y;
-        const duration = 500; // 천천히 나타나기
+        const duration = 500;
         const startTime = Date.now();
         
         const animate = () => {
@@ -432,7 +383,6 @@ class SmoothMovementManager {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             
-            // easeOutBack 이징 (살짝 오버슈트하면서 나타나기)
             const c1 = 1.70158;
             const c3 = c1 + 1;
             const eased = 1 + c3 * Math.pow(progress - 1, 3) + c1 * Math.pow(progress - 1, 2);
@@ -440,7 +390,6 @@ class SmoothMovementManager {
             const currentX = startX + (targetX - startX) * eased;
             const currentY = startY + (targetY - startY) * eased;
             
-            // 값 검증 추가
             if (!Number.isFinite(currentX) || !Number.isFinite(currentY)) {
                 console.error('[Movement] Invalid animation values for show:', { currentX, currentY, progress, eased });
                 this.isAnimating = false;
@@ -450,14 +399,12 @@ class SmoothMovementManager {
             header.setPosition(Math.round(currentX), Math.round(currentY));
             
             if (progress < 1) {
-                setTimeout(animate, 8); // 120fps
+                setTimeout(animate, 8);
             } else {
-                // 나타남 애니메이션 완료
                 this.headerPosition = { x: targetX, y: targetY };
                 header.setPosition(targetX, targetY);
                 this.isAnimating = false;
                 
-                // 저장된 위치 정보 초기화
                 this.hiddenPosition = null;
                 this.lastVisiblePosition = null;
                 
@@ -470,18 +417,15 @@ class SmoothMovementManager {
         animate();
     }
     
-    // 단발성 스텝 이동
     moveStep(direction) {
         const header = windowPool.get('header');
         if (!header || !header.isVisible() || this.isAnimating) return;
         
         console.log(`[Movement] Step ${direction}`);
         
-        // 현재 위치 가져오기
         const currentBounds = header.getBounds();
         this.headerPosition = { x: currentBounds.x, y: currentBounds.y };
         
-        // 목표 위치 계산
         let targetX = this.headerPosition.x;
         let targetY = this.headerPosition.y;
         
@@ -502,7 +446,6 @@ class SmoothMovementManager {
                 return;
         }
         
-        // 화면 경계 체크
         const display = screen.getPrimaryDisplay();
         const { width, height } = display.workAreaSize;
         const headerBounds = header.getBounds();
@@ -510,17 +453,14 @@ class SmoothMovementManager {
         targetX = Math.max(0, Math.min(width - headerBounds.width, targetX));
         targetY = Math.max(0, Math.min(height - headerBounds.height, targetY));
         
-        // 실제로 이동할 거리가 있는지 확인
         if (targetX === this.headerPosition.x && targetY === this.headerPosition.y) {
             console.log(`[Movement] Already at boundary for ${direction}`);
             return;
         }
         
-        // 부드러운 애니메이션으로 이동
         this.animateToPosition(header, targetX, targetY);
     }
     
-    // 부드러운 애니메이션
     animateToPosition(header, targetX, targetY) {
         this.isAnimating = true;
         
@@ -528,7 +468,6 @@ class SmoothMovementManager {
         const startY = this.headerPosition.y;
         const startTime = Date.now();
         
-        // 입력값 검증
         if (!Number.isFinite(targetX) || !Number.isFinite(targetY) || 
             !Number.isFinite(startX) || !Number.isFinite(startY)) {
             console.error('[Movement] Invalid position values:', { startX, startY, targetX, targetY });
@@ -545,13 +484,11 @@ class SmoothMovementManager {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / this.animationDuration, 1);
             
-            // easeOutCubic 이징 (더 부드러운 감속)
             const eased = 1 - Math.pow(1 - progress, 3);
             
             const currentX = startX + (targetX - startX) * eased;
             const currentY = startY + (targetY - startY) * eased;
             
-            // 값 검증 추가
             if (!Number.isFinite(currentX) || !Number.isFinite(currentY)) {
                 console.error('[Movement] Invalid animation values:', { currentX, currentY, progress, eased });
                 this.isAnimating = false;
@@ -561,15 +498,13 @@ class SmoothMovementManager {
             header.setPosition(Math.round(currentX), Math.round(currentY));
             
             if (progress < 1) {
-                setTimeout(animate, 8); // 더 높은 프레임레이트 (120fps)
+                setTimeout(animate, 8);
             } else {
-                // 애니메이션 완료
                 this.headerPosition.x = targetX;
                 this.headerPosition.y = targetY;
                 header.setPosition(targetX, targetY);
                 this.isAnimating = false;
                 
-                // 레이아웃 업데이트
                 updateLayout();
                 
                 console.log(`[Movement] Step completed to (${targetX}, ${targetY})`);
@@ -589,12 +524,10 @@ class SmoothMovementManager {
         const { width, height } = display.workAreaSize;
         const headerBounds = header.getBounds();
         
-        // 현재 위치
         const currentBounds = header.getBounds();
         let targetX = currentBounds.x;
         let targetY = currentBounds.y;
         
-        // 목표 위치 계산
         switch(direction) {
             case 'left':
                 targetX = 0;
@@ -610,17 +543,12 @@ class SmoothMovementManager {
                 break;
         }
         
-        // 현재 위치 업데이트
         this.headerPosition = { x: currentBounds.x, y: currentBounds.y };
         
-        // 애니메이션으로 이동 (부드럽게)
         this.isAnimating = true;
         const startX = this.headerPosition.x;
         const startY = this.headerPosition.y;
-        const duration = 400; // 엣지 이동도 더 부드럽게 (200 → 400ms)
-        const startTime = Date.now();
-        
-        // 입력값 검증
+        const duration = 400;
         if (!Number.isFinite(targetX) || !Number.isFinite(targetY) || 
             !Number.isFinite(startX) || !Number.isFinite(startY)) {
             console.error('[Movement] Invalid edge position values:', { startX, startY, targetX, targetY });
@@ -637,13 +565,11 @@ class SmoothMovementManager {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
             
-            // easeOutQuart 이징 (더 부드러운 엣지 이동)
             const eased = 1 - Math.pow(1 - progress, 4);
             
             const currentX = startX + (targetX - startX) * eased;
             const currentY = startY + (targetY - startY) * eased;
             
-            // 값 검증 추가
             if (!Number.isFinite(currentX) || !Number.isFinite(currentY)) {
                 console.error('[Movement] Invalid edge animation values:', { currentX, currentY, progress, eased });
                 this.isAnimating = false;
@@ -653,14 +579,12 @@ class SmoothMovementManager {
             header.setPosition(Math.round(currentX), Math.round(currentY));
             
             if (progress < 1) {
-                setTimeout(animate, 8); // 높은 프레임레이트
+                setTimeout(animate, 8);
             } else {
-                // 최종 위치로 정확히 설정
                 header.setPosition(targetX, targetY);
                 this.headerPosition = { x: targetX, y: targetY };
                 this.isAnimating = false;
                 
-                // 레이아웃 업데이트
                 updateLayout();
                 
                 console.log(`[Movement] Edge movement completed: ${direction}`);
@@ -670,13 +594,10 @@ class SmoothMovementManager {
         animate();
     }
     
-    // 더 이상 사용하지 않는 메서드들 (호환성을 위해 유지)
     handleKeyPress(direction) {
-        // 단발성 이동으로 변경되어 더 이상 사용하지 않음
     }
     
     handleKeyRelease(direction) {
-        // 단발성 이동으로 변경되어 더 이상 사용하지 않음
     }
     
     forceStopMovement() {
@@ -697,19 +618,15 @@ function toggleAllWindowsVisibility() {
     if (!header) return;
 
     if (header.isVisible()) {
-        // ---------------- SMART HIDE ----------------
         console.log('[Visibility] Smart hiding - calculating nearest edge');
         
-        // 현재 헤더 위치 가져오기
         const headerBounds = header.getBounds();
         const display = screen.getPrimaryDisplay();
         const { width: screenWidth, height: screenHeight } = display.workAreaSize;
         
-        // 헤더 중심점 계산
         const centerX = headerBounds.x + headerBounds.width / 2;
         const centerY = headerBounds.y + headerBounds.height / 2;
         
-        // 각 가장자리까지의 거리 계산
         const distances = {
             top: centerY,
             bottom: screenHeight - centerY,
@@ -717,24 +634,20 @@ function toggleAllWindowsVisibility() {
             right: screenWidth - centerX
         };
         
-        // 가장 가까운 가장자리 찾기
         const nearestEdge = Object.keys(distances).reduce((nearest, edge) => 
             distances[edge] < distances[nearest] ? edge : nearest
         );
         
         console.log(`[Visibility] Nearest edge: ${nearestEdge} (distance: ${distances[nearestEdge].toFixed(1)}px)`);
-        
-        // 보이는 창들 기록 및 부드럽게 숨기기
+
         lastVisibleWindows.clear();
-        lastVisibleWindows.add('header'); // 헤더는 항상 포함
+        lastVisibleWindows.add('header');
         
         windowPool.forEach((win, name) => {
             if (win.isVisible()) {
                 lastVisibleWindows.add(name);
                 if (name !== 'header') {
-                    // 각 창에 숨김 애니메이션 트리거
                     win.webContents.send('window-hide-animation');
-                    // 애니메이션 후 숨기기
                     setTimeout(() => {
                         if (!win.isDestroyed()) {
                             win.hide();
@@ -746,35 +659,27 @@ function toggleAllWindowsVisibility() {
         
         console.log('[Visibility] Visible windows before hide:', Array.from(lastVisibleWindows));
         
-        // 헤더를 가장 가까운 가장자리로 부드럽게 이동시키면서 숨기기
         movementManager.hideToEdge(nearestEdge, () => {
-            // 애니메이션 완료 후 실제로 숨기기
             header.hide();
             console.log('[Visibility] Smart hide completed');
         });
         
     } else {
-        // ---------------- SMART SHOW ----------------
         console.log('[Visibility] Smart showing from hidden position');
         console.log('[Visibility] Restoring windows:', Array.from(lastVisibleWindows));
         
-        // 헤더 먼저 보이기 (화면 밖 위치에서)
         header.show();
         
-        // 부드럽게 원래 위치로 복원
         movementManager.showFromEdge(() => {
-            // 다른 자식 창들 부드럽게 보이기
             lastVisibleWindows.forEach(name => {
                 if (name === 'header') return;
                 const win = windowPool.get(name);
                 if (win && !win.isDestroyed()) {
                     win.show();
-                    // 보임 애니메이션 트리거
                     win.webContents.send('window-show-animation');
                 }
             });
             
-            // 레이아웃 업데이트
             setImmediate(updateLayout);
             setTimeout(updateLayout, 120);
             
@@ -804,9 +709,7 @@ function createWindows(sendToRenderer, openaiSessionRef) {
     const { y: workAreaY, width: screenWidth } = primaryDisplay.workArea;
 
     const initialX = Math.round((screenWidth - DEFAULT_WINDOW_WIDTH) / 2);
-    const initialY = workAreaY + 21; // 초기 Y 위치 (더 이상 고정되지 않음)
-
-    // 움직임 매니저 초기화
+    const initialY = workAreaY + 21;
     movementManager = new SmoothMovementManager();
 
     const header = new BrowserWindow({
@@ -833,20 +736,16 @@ function createWindows(sendToRenderer, openaiSessionRef) {
     header.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     header.loadFile(path.join(__dirname, '../app/header.html'));
     
-    // 포커스 관련 이벤트 핸들러 추가
     header.on('focus', () => {
         console.log('[WindowManager] Header gained focus');
     });
     
     header.on('blur', () => {
         console.log('[WindowManager] Header lost focus');
-        // 포커스 강제 복원 제거 - 사용자의 자연스러운 상호작용 허용
     });
     
-    // 마우스 클릭 시에만 포커스 (자연스러운 상호작용)
     header.webContents.on('before-input-event', (event, input) => {
         if (input.type === 'mouseDown') {
-            // 입력 필드 영역에서만 포커스
             const target = input.target;
             if (target && (target.includes('input') || target.includes('apikey'))) {
                 header.focus();
@@ -864,19 +763,18 @@ function createWindows(sendToRenderer, openaiSessionRef) {
         hasShadow: false,
         skipTaskbar: true,
         hiddenInMissionControl: true,
-        resizable: false, // 수동 크기 조절 방지
+        resizable: false,
         webPreferences: { nodeIntegration: true, contextIsolation: false },
     };
-    // If OS shadow applied on BrowserWindow, it cause afterimage on transparent + scroll
 
     const listen = new BrowserWindow({ 
         ...commonChildOptions, 
         width: 400, 
-        height: 300, // 초기 높이 축소
-        minWidth: 400,   // 가로 크기 고정
-        maxWidth: 400,   // 가로 크기 고정
-        minHeight: 200,  // 최소 높이 설정
-        maxHeight: 700   // 최대 높이 설정 (CSS와 동일)
+        height: 300,
+        minWidth: 400,
+        maxWidth: 400,
+        minHeight: 200,
+        maxHeight: 700
     });
     listen.setContentProtection(isContentProtectionOn);
     listen.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -902,7 +800,6 @@ function createWindows(sendToRenderer, openaiSessionRef) {
     settings.setContentProtection(isContentProtectionOn);
     settings.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     
-    // --- 렌더러 프로세스 직접 디버깅을 위해 DevTools 강제 실행 ---
     settings.webContents.openDevTools({ mode: 'detach', activate: false });
     
     console.log('Settings window created with bounds:', settings.getBounds());
@@ -915,30 +812,24 @@ function createWindows(sendToRenderer, openaiSessionRef) {
             console.error('Failed to load settings content:', error);
         });
     
-    // settings 창이 준비되면 로그 출력
     settings.webContents.once('dom-ready', () => {
         console.log('Settings window DOM ready');
     });
     
-    // 에러 로그 추가
     settings.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
         console.error('Settings window failed to load:', errorCode, errorDescription);
     });
     
     windowPool.set('settings', settings);
 
-    // header.on('move', updateLayout);
     header.on('resize', updateLayout);
 
     header.webContents.once('dom-ready', () => {
         loadAndRegisterShortcuts();
     });
 
-    // Header position handlers are registered in setupIpcHandlers()
-
     ipcMain.handle('toggle-all-windows-visibility', toggleAllWindowsVisibility);
 
-    // This handler manages showing/hiding listen, ask, and settings windows.
     ipcMain.handle('toggle-feature', async (event, featureName) => {
         const windowToToggle = windowPool.get(featureName);
         
@@ -948,7 +839,7 @@ function createWindows(sendToRenderer, openaiSessionRef) {
                 if (liveSummaryService.isSessionActive()) {
                     console.log('[WindowManager] Listen session is active, closing it via toggle.');
                     await liveSummaryService.closeSession();
-                    return; // The 'session-did-close' event will hide the window.
+                    return;
                 }
             }
             console.log(`[WindowManager] Toggling feature: ${featureName}`);
@@ -963,9 +854,7 @@ function createWindows(sendToRenderer, openaiSessionRef) {
             }
             
             if (askWindow.isVisible()) {
-                // Ask 창이 보이는 상태
                 try {
-                    // 현재 response가 있는지 확인 - 더 깊은 Shadow DOM 탐색
                     const hasResponse = await askWindow.webContents.executeJavaScript(`
                         (() => {
                             try {
@@ -983,21 +872,17 @@ function createWindows(sendToRenderer, openaiSessionRef) {
                                     return false;
                                 }
                                 
-                                // AskView의 상태 확인
                                 console.log('AskView found, checking state...');
                                 console.log('currentResponse:', askView.currentResponse);
                                 console.log('isLoading:', askView.isLoading);
                                 console.log('isStreaming:', askView.isStreaming);
                                 
-                                // response가 있는지 확인
                                 const hasContent = !!(askView.currentResponse || askView.isLoading || askView.isStreaming);
                                 
-                                // shadowRoot 내부의 실제 콘텐츠도 확인
                                 if (!hasContent && askView.shadowRoot) {
                                     const responseContainer = askView.shadowRoot.querySelector('.response-container');
                                     if (responseContainer && !responseContainer.classList.contains('hidden')) {
                                         const textContent = responseContainer.textContent.trim();
-                                        // 빈 상태 메시지가 아닌 실제 콘텐츠가 있는지 확인
                                         const hasActualContent = textContent && 
                                             !textContent.includes('Ask a question to see the response here') &&
                                             textContent.length > 0;
@@ -1017,11 +902,9 @@ function createWindows(sendToRenderer, openaiSessionRef) {
                     console.log(`[WindowManager] Ask window visible, hasResponse: ${hasResponse}`);
                     
                     if (hasResponse) {
-                        // response가 있으면 text input만 토글
                         askWindow.webContents.send('toggle-text-input');
                         console.log('[WindowManager] Sent toggle-text-input command');
                     } else {
-                        // response가 없으면 창 닫기
                         console.log('[WindowManager] No response found, closing window');
                         askWindow.webContents.send('window-hide-animation');
                         
@@ -1034,19 +917,16 @@ function createWindows(sendToRenderer, openaiSessionRef) {
                     }
                 } catch (error) {
                     console.error('[WindowManager] Error checking Ask window state:', error);
-                    // 에러 발생 시 기본 동작: text input 토글 시도
                     console.log('[WindowManager] Falling back to toggle text input');
                     askWindow.webContents.send('toggle-text-input');
                 }
             } else {
-                // Ask 창이 숨겨진 상태면 보이기
                 console.log('[WindowManager] Showing hidden Ask window');
                 askWindow.show();
                 updateLayout();
                 askWindow.webContents.send('window-show-animation');
             }
         } else {
-            // 다른 feature들은 기존 로직 유지
             const windowToToggle = windowPool.get(featureName);
             
             if (windowToToggle) {
@@ -1056,7 +936,6 @@ function createWindows(sendToRenderer, openaiSessionRef) {
                 }
                 
                 if (windowToToggle.isVisible()) {
-                    // 숨기기
                     if (featureName === 'settings') {
                         windowToToggle.webContents.send('settings-window-hide-animation');
                     } else {
@@ -1070,7 +949,6 @@ function createWindows(sendToRenderer, openaiSessionRef) {
                         }
                     }, 250);
                 } else {
-                    // 보이기
                     try {
                         windowToToggle.show();
                         updateLayout();
@@ -1103,11 +981,9 @@ function createWindows(sendToRenderer, openaiSessionRef) {
         }
     });
 
-    // AssistantView 높이 자동 조절을 위한 핸들러
     ipcMain.handle('adjust-window-height', (event, targetHeight) => {
         const senderWindow = BrowserWindow.fromWebContents(event.sender);
         if (senderWindow) {
-            // 일시적으로 resizable 활성화
             const wasResizable = senderWindow.isResizable();
             if (!wasResizable) {
                 senderWindow.setResizable(true);
@@ -1117,23 +993,18 @@ function createWindows(sendToRenderer, openaiSessionRef) {
             const minHeight = senderWindow.getMinimumSize()[1];
             const maxHeight = senderWindow.getMaximumSize()[1];
             
-            // 높이를 제한 범위 내로 조정
             const adjustedHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
             
             senderWindow.setSize(currentBounds.width, adjustedHeight, false);
-            // console.log(`Adjusted window height to: ${adjustedHeight}px`);
             
-            // resizable 상태 복원
             if (!wasResizable) {
                 senderWindow.setResizable(false);
             }
             
-            // 레이아웃 업데이트
             updateLayout();
         }
     });
 
-    // --- NEW: Handle session close to hide window ---
     ipcMain.on('session-did-close', () => {
         const listenWindow = windowPool.get('listen');
         if (listenWindow && listenWindow.isVisible()) {
@@ -1150,7 +1021,6 @@ function createWindows(sendToRenderer, openaiSessionRef) {
 function loadAndRegisterShortcuts() {
     const defaultKeybinds = getDefaultKeybinds();
     const header = windowPool.get('header');
-    // Helper that forwards events to any renderer windows that are currently available.
     const sendToRenderer = (channel, ...args) => {
         windowPool.forEach(win => {
             try {
@@ -1158,7 +1028,6 @@ function loadAndRegisterShortcuts() {
                     win.webContents.send(channel, ...args);
                 }
             } catch (e) {
-                // Ignore failures for windows that may already be closed
             }
         });
     };
@@ -1166,7 +1035,6 @@ function loadAndRegisterShortcuts() {
     const openaiSessionRef = { current: null };
 
     if (!header) {
-        // Fallback: register shortcuts without window-specific actions.
         return updateGlobalShortcuts(defaultKeybinds, undefined, sendToRenderer, openaiSessionRef);
     }
 
@@ -1200,24 +1068,21 @@ function setupIpcHandlers(openaiSessionRef) {
 
             if (name === 'settings' && bounds) {
                 // Adjust position based on button bounds
-                     // ① 헤더 창의 화면 위치를 가져온다
                      const header = windowPool.get('header');
                      const headerBounds = header?.getBounds() ?? { x: 0, y: 0 };
                 
-                     // ② 로컬->스크린 변환
                      const settingsBounds = win.getBounds();
                      const display = screen.getPrimaryDisplay().workAreaSize;
                 
                      let x = Math.round(
-                         headerBounds.x                      // 헤더의 화면 X
-                       + bounds.x                            // 버튼의 헤더 내 X
+                         headerBounds.x
+                       + bounds.x
                        + bounds.width / 2
                        - settingsBounds.width / 2);
                 
                      let y = Math.round(
-                         headerBounds.y + bounds.y + bounds.height + 5);  // 버튼 바로 아래 5 px
+                         headerBounds.y + bounds.y + bounds.height + 5);
                 
-                     // ③ 화면 경계 보정
                      x = Math.max(10, Math.min(display.width  - settingsBounds.width  - 10, x));
                      y = Math.max(10, Math.min(display.height - settingsBounds.height - 10, y));
                 
@@ -1239,7 +1104,6 @@ function setupIpcHandlers(openaiSessionRef) {
                 if (settingsHideTimer) {
                     clearTimeout(settingsHideTimer);
                 }
-                // 마우스가 창 밖으로 나갔을 때 약간의 지연 후 숨김
                 settingsHideTimer = setTimeout(() => {
                     window.hide();
                     settingsHideTimer = null;
@@ -1252,7 +1116,6 @@ function setupIpcHandlers(openaiSessionRef) {
         }
     });
 
-    // AppHeader에서 호출하여 숨기기 타이머를 취소
     ipcMain.on('cancel-hide-window', (event, name) => {
         if (name === 'settings' && settingsHideTimer) {
             clearTimeout(settingsHideTimer);
@@ -1272,7 +1135,6 @@ function setupIpcHandlers(openaiSessionRef) {
     });
 
 
-    // sendMessage가 호출되면 text-input 숨기기 처리
     ipcMain.handle('message-sending', async (event) => {
         console.log('📨 Main: Received message-sending signal');
         const askWindow = windowPool.get('ask');
@@ -1285,7 +1147,6 @@ function setupIpcHandlers(openaiSessionRef) {
     });
 
 
-    // 특정 창의 가시성 상태 확인
     ipcMain.handle('is-window-visible', (event, windowName) => {
         const window = windowPool.get(windowName);
         if (window && !window.isDestroyed()) {
@@ -1294,7 +1155,6 @@ function setupIpcHandlers(openaiSessionRef) {
         return false;
     });
 
-    // AssistantView에서 AskView로 응답 전달
     ipcMain.handle('send-to-ask-view', (event, data) => {
         const askWindow = windowPool.get('ask');
         if (askWindow && !askWindow.isDestroyed()) {
@@ -1307,7 +1167,6 @@ function setupIpcHandlers(openaiSessionRef) {
         }
     });
 
-    // Content Protection Toggle
     ipcMain.handle('toggle-content-protection', () => {
         isContentProtectionOn = !isContentProtectionOn;
         console.log(`[Protection] Content protection toggled to: ${isContentProtectionOn}`);
@@ -1327,7 +1186,6 @@ function setupIpcHandlers(openaiSessionRef) {
         updateGlobalShortcuts(newKeybinds);
     });
 
-    // Open personalization page (단일 사용자 시스템)
     ipcMain.handle('open-login-page', () => {
         const webUrl = process.env.pickleglass_WEB_URL || 'http://localhost:3000';
         const personalizeUrl = `${webUrl}/personalize?desktop=true`;
@@ -1335,19 +1193,14 @@ function setupIpcHandlers(openaiSessionRef) {
         console.log('Opening personalization page:', personalizeUrl);
     });
 
-    // API key related handlers
     setupApiKeyIPC();
 
-    // Legacy IPC channels used by renderer before the multi-window refactor. We keep them as no-ops for backward compatibility.
     ipcMain.handle('resize-window', () => {
-        // No-op: resizing is managed per-window in the new layout.
     });
 
     ipcMain.handle('resize-for-view', () => {
-        // No-op: maintained for compatibility.
     });
 
-    // Header 창 크기 동적 조절
     ipcMain.handle('resize-header-window', (event, { width, height }) => {
         const header = windowPool.get('header');
         if (header) {
@@ -1357,10 +1210,8 @@ function setupIpcHandlers(openaiSessionRef) {
             }
 
             const bounds = header.getBounds();
-            // 창의 중앙을 기준으로 위치를 조정하여 확대/축소되는 것처럼 보이게 함
             const newX = bounds.x + Math.round((bounds.width - width) / 2);
             
-            // setBounds는 y 좌표도 필요로 하므로 현재 y 좌표를 사용
             header.setBounds({ x: newX, y: bounds.y, width, height });
 
             if (!wasResizable) {
@@ -1371,29 +1222,24 @@ function setupIpcHandlers(openaiSessionRef) {
         return { success: false, error: 'Header window not found' };
     });
 
-    // Header animation completion handler
     ipcMain.on('header-animation-complete', (event, state) => {
         const header = windowPool.get('header');
         if (!header) return;
 
         if (state === 'hidden') {
-            // Animation completed, actually hide the header
             header.hide();
         } else if (state === 'visible') {
-            // Header animation completed, show other windows
             lastVisibleWindows.forEach(name => {
                 if (name === 'header') return;
                 const win = windowPool.get(name);
                 if (win) win.show();
             });
 
-            // Update layout
             setImmediate(updateLayout);
             setTimeout(updateLayout, 120);
         }
     });
 
-    // New handlers for custom dragging
     ipcMain.handle('get-header-position', () => {
         const header = windowPool.get('header');
         if (header) {
@@ -1406,31 +1252,26 @@ function setupIpcHandlers(openaiSessionRef) {
     ipcMain.handle('move-header', (event, newX, newY) => {
         const header = windowPool.get('header');
         if (header) {
-            // Y 위치가 제공되지 않으면 현재 Y 위치 유지 (기존 호환성)
             const currentY = newY !== undefined ? newY : header.getBounds().y;
             header.setPosition(newX, currentY, false);
             
-            // 레이아웃 업데이트
             updateLayout();
         }
     });
 
-    // 새로운 핸들러: X, Y 모두 처리
     ipcMain.handle('move-header-to', (event, newX, newY) => {
         const header = windowPool.get('header');
         if (header) {
-            // 화면 경계 체크
+
             const display = screen.getPrimaryDisplay();
             const { width: screenWidth, height: screenHeight } = display.workAreaSize;
             const headerBounds = header.getBounds();
             
-            // 경계 내로 제한
             const clampedX = Math.max(0, Math.min(screenWidth - headerBounds.width, newX));
             const clampedY = Math.max(0, Math.min(screenHeight - headerBounds.height, newY));
             
             header.setPosition(clampedX, clampedY, false);
             
-            // 레이아웃 업데이트
             updateLayout();
         }
     });
@@ -1452,10 +1293,8 @@ function setupIpcHandlers(openaiSessionRef) {
         if (window && !window.isDestroyed()) {
             console.log(`[WindowManager] Force closing window: ${windowName}`);
             
-            // 창에 숨김 애니메이션 트리거
             window.webContents.send('window-hide-animation');
             
-            // 애니메이션 완료 후 창 숨기기
             setTimeout(() => {
                 if (!window.isDestroyed()) {
                     window.hide();
@@ -1465,7 +1304,6 @@ function setupIpcHandlers(openaiSessionRef) {
         }
     });
 
-       // Initialize screen capture
     ipcMain.handle('start-screen-capture', async () => {
         try {
             isCapturing = true;
@@ -1477,7 +1315,6 @@ function setupIpcHandlers(openaiSessionRef) {
         }
     });
 
-    // Stop screen capture
     ipcMain.handle('stop-screen-capture', async () => {
         try {
             isCapturing = false;
@@ -1490,9 +1327,7 @@ function setupIpcHandlers(openaiSessionRef) {
         }
     });
 
-    // Capture screenshot
     ipcMain.handle('capture-screenshot', async (event, options = {}) => {
-        // For macOS, use the native `screencapture` CLI to avoid window jumping issues.
         if (process.platform === 'darwin') {
             try {
                 const tempPath = path.join(os.tmpdir(), `screenshot-${Date.now()}.jpg`);
@@ -1510,7 +1345,6 @@ function setupIpcHandlers(openaiSessionRef) {
                 const base64 = resizedBuffer.toString('base64');
                 const metadata = await sharp(resizedBuffer).metadata();
 
-                // 💥 Update lastScreenshot cache
                 lastScreenshot = {
                     base64,
                     width: metadata.width,
@@ -1526,7 +1360,6 @@ function setupIpcHandlers(openaiSessionRef) {
             }
         }
 
-        // Fallback for non-macOS platforms using the original desktopCapturer method
         try {
             const sources = await desktopCapturer.getSources({
                 types: ['screen'],
@@ -1559,10 +1392,8 @@ function setupIpcHandlers(openaiSessionRef) {
         }
     });
 
-    // Get current screenshot (returns last captured or captures new one)
     ipcMain.handle('get-current-screenshot', async (event) => {
         try {
-            // If we have a recent screenshot (less than 1 second old), return it
             if (lastScreenshot && (Date.now() - lastScreenshot.timestamp) < 1000) {
                 console.log('Returning cached screenshot');
                 return {
@@ -1605,7 +1436,6 @@ function setupIpcHandlers(openaiSessionRef) {
         if (user && user.email) {
             (async () => {
                 try {
-                    // Check if virtual key already exists to avoid duplicate requests
                     const existingKey = getStoredApiKey();
                     if (existingKey) {
                         console.log('[WindowManager] Virtual key already exists, skipping fetch');
@@ -1621,7 +1451,6 @@ function setupIpcHandlers(openaiSessionRef) {
                     const vKey = await getVirtualKeyByEmail(user.email, user.idToken);
                     console.log('[WindowManager] Virtual key fetched successfully');
             
-                    // Save API key and notify all windows
                     setApiKey(vKey).then(() => {
                         windowPool.forEach(win => {
                         if (win && !win.isDestroyed()) {
@@ -1632,7 +1461,7 @@ function setupIpcHandlers(openaiSessionRef) {
             
                 } catch (err) {
                     console.error('[WindowManager] Virtual key fetch failed:', err);
-                    // Notify user if authentication token issue
+
                     if (err.message.includes('token') || err.message.includes('Authentication')) {
                         windowPool.forEach(win => {
                             if (win && !win.isDestroyed()) {
@@ -1651,11 +1480,9 @@ function setupIpcHandlers(openaiSessionRef) {
         if (!user && previousUser) { // ADDED: Only trigger on actual state change from logged in to logged out
             console.log('[WindowManager] User logged out, clearing API key and notifying renderers');
             
-            // ① API-Key 삭제 & DB 반영
             setApiKey(null)
                 .then(() => {
                     console.log('[WindowManager] API key cleared successfully after logout');
-                    // ② 모든 렌더러에 "api-key-removed" 알림 (setApiKey 성공 후)
                     windowPool.forEach(win => {
                         if (win && !win.isDestroyed()) {
                             win.webContents.send('api-key-removed');
@@ -1664,7 +1491,6 @@ function setupIpcHandlers(openaiSessionRef) {
                 })
                 .catch(err => {
                     console.error('[WindowManager] setApiKey error:', err);
-                    // 실패해도 렌더러에는 알림
                     windowPool.forEach(win => {
                         if (win && !win.isDestroyed()) {
                             win.webContents.send('api-key-removed');
@@ -1699,7 +1525,6 @@ function setupIpcHandlers(openaiSessionRef) {
     });
 }
 
-// API 키 관리
 let storedApiKey = null;
 
 async function setApiKey(apiKey) {
@@ -1713,7 +1538,6 @@ async function setApiKey(apiKey) {
         console.error('[WindowManager] Failed to save API key to SQLite:', err);
     }
 
-    // Keep legacy localStorage in sync so existing renderer code keeps working
     windowPool.forEach(win => {
         if (win && !win.isDestroyed()) {
             const js = apiKey
@@ -1739,11 +1563,11 @@ async function loadApiKeyFromDb() {
 }
 
 function getCurrentFirebaseUser() {
-    return currentFirebaseUser;        // null이면 로그인 안 된 상태
+    return currentFirebaseUser;
 }
   
 function isFirebaseLoggedIn() {
-    return !!currentFirebaseUser;      // true / false
+    return !!currentFirebaseUser;
 }
 
   function setCurrentFirebaseUser(user) {
@@ -1755,11 +1579,9 @@ function getStoredApiKey() {
     return storedApiKey;
 }
 
-// API key based IPC management
 function setupApiKeyIPC() {
     const { ipcMain } = require('electron');
     
-    // Get stored API key
     ipcMain.handle('get-stored-api-key', async () => {
         if (storedApiKey === null) {
             const dbKey = await loadApiKeyFromDb();
@@ -1770,12 +1592,10 @@ function setupApiKeyIPC() {
         return storedApiKey;
     });
     
-    // Save API key after validation
     ipcMain.handle('api-key-validated', async (event, apiKey) => {
         console.log('[WindowManager] API key validation completed, saving...');
         await setApiKey(apiKey);
         
-        // Send API key validation completed event to all windows
         windowPool.forEach((win, name) => {
             if (win && !win.isDestroyed()) {
                 win.webContents.send('api-key-validated', apiKey);
@@ -1785,19 +1605,16 @@ function setupApiKeyIPC() {
         return { success: true };
     });
     
-    // Remove API key (used from settings)
     ipcMain.handle('remove-api-key', async () => {
         console.log('[WindowManager] API key removal requested');
         await setApiKey(null);
         
-        // Send API key removal event to all windows
         windowPool.forEach((win, name) => {
             if (win && !win.isDestroyed()) {
                 win.webContents.send('api-key-removed');
             }
         });
         
-        // Also hide the settings window
         const settingsWindow = windowPool.get('settings');
         if (settingsWindow && settingsWindow.isVisible()) {
             settingsWindow.hide();
@@ -1819,8 +1636,6 @@ function setupApiKeyIPC() {
     
     console.log('[WindowManager] API key related IPC handlers registered (SQLite-backed)');
 }
-
-// Old file watcher function removed - replaced with IPC-based communication
 
 function createWindow(sendToRenderer, openaiSessionRef) {
     const mainWindow = new BrowserWindow({
@@ -1859,7 +1674,6 @@ function createWindow(sendToRenderer, openaiSessionRef) {
     mainWindow.setContentProtection(true);
     mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-    // Center window at the top of the screen
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width: screenWidth } = primaryDisplay.workAreaSize;
     const x = Math.floor((screenWidth - DEFAULT_WINDOW_WIDTH) / 2);
@@ -1938,13 +1752,11 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
     // Unregister all existing shortcuts
     globalShortcut.unregisterAll();
     
-    // 움직임 매니저 초기화
     if (movementManager) {
         movementManager.destroy();
     }
     movementManager = new SmoothMovementManager();
 
-    // Cmd+화살표 글로벌 단축키 등록 (다른 창 포커스 상태와 무관하게 동작)
     const isMac = process.platform === 'darwin';
     const modifier = isMac ? 'Cmd' : 'Ctrl';
     
@@ -1969,7 +1781,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     });
     
-    // Shift + Cmd + 화살표로 끝으로 이동
     const edgeDirections = [
         { key: `${modifier}+Shift+Left`, direction: 'left' },
         { key: `${modifier}+Shift+Right`, direction: 'right' },
@@ -1991,8 +1802,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     });
 
-    // 기존 다른 단축키들은 그대로 유지
-    // Register toggle visibility shortcut
     if (keybinds.toggleVisibility) {
         try {
             globalShortcut.register(keybinds.toggleVisibility, toggleAllWindowsVisibility);
@@ -2002,7 +1811,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     }
 
-    // Register toggle click-through shortcut
     if (keybinds.toggleClickThrough) {
         try {
             globalShortcut.register(keybinds.toggleClickThrough, () => {
@@ -2022,7 +1830,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     }
 
-    // Register Cmd/Ctrl+Enter shortcut to control Ask window
     if (keybinds.nextStep) {
         try {
             globalShortcut.register(keybinds.nextStep, () => {
@@ -2035,19 +1842,15 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
                 }
 
                 if (askWindow.isVisible()) {
-                    // Ask 창이 이미 열려 있으면 현재 입력 내용을 전송하도록 요청
                     askWindow.webContents.send('ask-global-send');
                 } else {
-                    // Ask 창이 닫혀 있으면 열기 (기존 toggle-feature 로직과 동일하게)
                     try {
                         askWindow.show();
                         
-                        // 즉시 레이아웃 업데이트하여 올바른 위치에 배치
                         const header = windowPool.get('header');
                         if (header) {
                             const currentHeaderPosition = header.getBounds();
                             updateLayout();
-                            // 레이아웃 업데이트 후 헤더 위치 복원
                             header.setPosition(currentHeaderPosition.x, currentHeaderPosition.y, false);
                         }
                         
@@ -2063,7 +1866,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     }
 
-    // Register manual screenshot shortcut
     if (keybinds.manualScreenshot) {
         try {
             globalShortcut.register(keybinds.manualScreenshot, () => {
@@ -2082,7 +1884,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     }
 
-    // Register previous response shortcut
     if (keybinds.previousResponse) {
         try {
             globalShortcut.register(keybinds.previousResponse, () => {
@@ -2095,7 +1896,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     }
 
-    // Register next response shortcut
     if (keybinds.nextResponse) {
         try {
             globalShortcut.register(keybinds.nextResponse, () => {
@@ -2108,7 +1908,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     }
 
-    // Register scroll up shortcut
     if (keybinds.scrollUp) {
         try {
             globalShortcut.register(keybinds.scrollUp, () => {
@@ -2121,7 +1920,6 @@ function updateGlobalShortcuts(keybinds, mainWindow, sendToRenderer, openaiSessi
         }
     }
 
-    // Register scroll down shortcut
     if (keybinds.scrollDown) {
         try {
             globalShortcut.register(keybinds.scrollDown, () => {
@@ -2143,7 +1941,6 @@ function setupWindowIpcHandlers(mainWindow, sendToRenderer, openaiSessionRef) {
             let targetWidth = DEFAULT_WINDOW_WIDTH;
 
             if (isMainViewVisible) {
-                // Define heights for different views
                 const viewHeights = {
                     listen: 400,
                     customize: 600,
@@ -2156,7 +1953,6 @@ function setupWindowIpcHandlers(mainWindow, sendToRenderer, openaiSessionRef) {
 
             const [currentWidth, currentHeight] = mainWindow.getSize();
             if (currentWidth !== targetWidth || currentHeight !== targetHeight) {
-                // Window resizing is disabled - remove resize functionality
                 console.log('Window resize requested but disabled for manual resize prevention');
             }
         } catch (error) {
@@ -2172,16 +1968,15 @@ function setupWindowIpcHandlers(mainWindow, sendToRenderer, openaiSessionRef) {
         }
     });
 
-    // Keep other essential IPC handlers
     ipcMain.handle('quit-application', async () => {
         app.quit();
     });
 
+    // Keep other essential IPC handlers
     // ... other handlers like open-external, etc. can be added from the old file if needed
 }
 
 function clearApiKey() {
-    // convenience wrapper for existing callers
     setApiKey(null);
 }
 
@@ -2220,7 +2015,6 @@ async function captureScreenshotInternal(options = {}) {
     try {
         const quality = options.quality || 'medium';
         
-        // Get available sources
         const sources = await desktopCapturer.getSources({
             types: ['screen'],
             thumbnailSize: {
@@ -2233,11 +2027,9 @@ async function captureScreenshotInternal(options = {}) {
             throw new Error('No screen sources available');
         }
 
-        // Use the first available screen source
         const source = sources[0];
         const thumbnail = source.thumbnail;
 
-        // Determine JPEG quality
         let jpegQuality;
         switch (quality) {
             case 'high':
@@ -2252,7 +2044,6 @@ async function captureScreenshotInternal(options = {}) {
                 break;
         }
 
-        // Convert to JPEG buffer
         const buffer = thumbnail.toJPEG(jpegQuality);
         const base64 = buffer.toString('base64');
 

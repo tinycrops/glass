@@ -5,7 +5,6 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('ipcRenderer', {
   send: (channel, data) => {
-    // 화이트리스트에 있는 채널만 허용
     const validChannels = ['set-current-user', 'firebase-auth-success'];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, data);
@@ -20,10 +19,8 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   on: (channel, func) => {
     const validChannels = ['api-key-updated'];
     if (validChannels.includes(channel)) {
-      // func 래핑하여 sender와 같은 불필요한 인자 제거
       const newCallback = (_, ...args) => func(...args);
       ipcRenderer.on(channel, newCallback);
-      // cleanup 함수 반환
       return () => {
         ipcRenderer.removeListener(channel, newCallback);
       };

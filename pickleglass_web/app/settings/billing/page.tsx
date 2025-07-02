@@ -25,13 +25,11 @@ export default function BillingPage() {
   return (
     <div className="bg-stone-50 min-h-screen">
       <div className="px-8 py-8">
-        {/* Header */}
         <div className="mb-6">
           <p className="text-xs text-gray-500 mb-1">Settings</p>
           <h1 className="text-3xl font-bold text-gray-900">Personal settings</h1>
         </div>
         
-        {/* Tabs */}
         <div className="mb-8">
           <nav className="flex space-x-10">
             {tabs.map((tab) => (
@@ -50,7 +48,6 @@ export default function BillingPage() {
           </nav>
         </div>
 
-        {/* Centered Cluely For Free */}
         <div className="flex items-center justify-center h-96">
           <h2 className="text-8xl font-black bg-gradient-to-r from-black to-gray-500 bg-clip-text text-transparent">
             Cl*ely For Free

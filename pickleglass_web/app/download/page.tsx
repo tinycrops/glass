@@ -4,10 +4,8 @@ import { Download, Smartphone, Monitor, Tablet } from 'lucide-react'
 import { useRedirectIfNotAuth } from '@/utils/auth'
 
 export default function DownloadPage() {
-  // 항상 모든 hooks 호출
   const userInfo = useRedirectIfNotAuth()
 
-  // 조건부 return 제거 - 대신 조건부 렌더링 사용
   if (!userInfo) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -28,7 +26,6 @@ export default function DownloadPage() {
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Desktop */}
           <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-shadow">
             <Monitor className="h-16 w-16 text-blue-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Desktop</h3>
@@ -39,7 +36,6 @@ export default function DownloadPage() {
             </button>
           </div>
 
-          {/* Mobile */}
           <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-shadow">
             <Smartphone className="h-16 w-16 text-green-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Mobile</h3>
@@ -54,7 +50,6 @@ export default function DownloadPage() {
             </div>
           </div>
 
-          {/* Tablet */}
           <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-shadow">
             <Tablet className="h-16 w-16 text-purple-600 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Tablet</h3>

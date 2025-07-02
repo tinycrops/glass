@@ -2,7 +2,6 @@ const express = require('express');
 const db = require('../db');
 const router = express.Router();
 
-// Profile management
 router.put('/profile', (req, res) => {
     const { displayName } = req.body;
     if (!displayName) return res.status(400).json({ error: 'displayName is required' });
@@ -41,7 +40,6 @@ router.post('/find-or-create', (req, res) => {
              ON CONFLICT(uid) DO NOTHING`
         ).run(uid, displayName, email, now);
         
-        // Always return the user profile
         const user = db.prepare('SELECT * FROM users WHERE uid = ?').get(uid);
         res.status(200).json(user);
 
@@ -51,7 +49,6 @@ router.post('/find-or-create', (req, res) => {
     }
 });
 
-// API key management
 router.post('/api-key', (req, res) => {
     const { apiKey } = req.body;
     if (typeof apiKey !== 'string') {
@@ -80,7 +77,6 @@ router.get('/api-key-status', (req, res) => {
     }
 });
 
-// Delete user and all their data
 router.delete('/profile', (req, res) => {
     try {
         const user = db.prepare('SELECT uid FROM users WHERE uid = ?').get(req.uid);

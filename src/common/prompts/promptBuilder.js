@@ -3,7 +3,6 @@ const { profilePrompts } = require('./promptTemplates.js');
 function buildSystemPrompt(promptParts, customPrompt = '', googleSearchEnabled = true) {
     const sections = [promptParts.intro, '\n\n', promptParts.formatRequirements];
 
-    // Only add search usage section if Google Search is enabled
     if (googleSearchEnabled) {
         sections.push('\n\n', promptParts.searchUsage);
     }

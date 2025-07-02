@@ -8,7 +8,6 @@ export class AppHeader extends LitElement {
     static styles = css`
         :host {
             display: block;
-            /* GPU 가속 최적화 */
             transform: translate3d(0, 0, 0);
             backface-visibility: hidden;
             transition: transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.25s ease-out;
@@ -144,9 +143,8 @@ export class AppHeader extends LitElement {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            border-radius: 9000px; /* 부모와 동일한 둥근 값 */
-            padding: 1px; /* 테두리 두께 */
-            /* 3-point white linear gradient with transparency */
+            border-radius: 9000px;
+            padding: 1px;
             background: linear-gradient(169deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.5) 100%); 
             -webkit-mask:
                 linear-gradient(#fff 0 0) content-box,
@@ -161,14 +159,13 @@ export class AppHeader extends LitElement {
             padding: 0 13px;
             background: transparent;
             border-radius: 9000px;
-            /* backdrop-filter: blur(0.50px); */
             justify-content: flex-start;
             align-items: center;
             gap: 6px;
             display: flex;
             border: none;
             cursor: pointer;
-            position: relative; /* For the ::after pseudo-element */
+            position: relative;
         }
 
         .listen-button.active::before {
@@ -198,7 +195,7 @@ export class AppHeader extends LitElement {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             border-radius: 9000px;
-            padding: 1px; /* Border thickness */
+            padding: 1px;
             background: linear-gradient(169deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%, rgba(255, 255, 255, 0.5) 100%);
             -webkit-mask:
                 linear-gradient(#fff 0 0) content-box,
@@ -209,23 +206,23 @@ export class AppHeader extends LitElement {
         }
 
         .header-actions {
-            height: 26px; /* Match the height of the listen button */
-            box-sizing: border-box; /* Ensure padding is included in the height */
+            height: 26px;
+            box-sizing: border-box;
             justify-content: flex-start;
             align-items: center;
-            gap: 9px; /* Increased from 7px */
+            gap: 9px;
             display: flex;
-            padding: 0 11px; /* Reduced horizontal padding */
-            border-radius: 8px; /* Rounded corners for hover effect */
-            transition: background 0.15s ease; /* Smooth transition */
+            padding: 0 11px;
+            border-radius: 8px;
+            transition: background 0.15s ease;
         }
 
         .header-actions:hover {
-            background: rgba(255, 255, 255, 0.1); /* Subtle background on hover */
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .ask-action {
-            margin-left: 4px; /* Add a small margin to space it from the Listen button */
+            margin-left: 4px;
         }
 
         .action-button,
@@ -279,7 +276,7 @@ export class AppHeader extends LitElement {
             color: white;
             font-size: 12px;
             font-family: 'Helvetica Neue', sans-serif;
-            font-weight: 500; /* Medium */
+            font-weight: 500;
             background-color: rgba(255, 255, 255, 0.1);
             border-radius: 13%;
             width: 18px;
@@ -290,9 +287,9 @@ export class AppHeader extends LitElement {
         }
 
         .settings-button {
-            padding: 5px; /* Add padding for a larger click area and hover effect */
-            border-radius: 50%; /* Circular hover effect */
-            transition: background 0.15s ease; /* Smooth transition */
+            padding: 5px;
+            border-radius: 50%;
+            transition: background 0.15s ease;
         }
         
         .settings-button:hover {
@@ -318,19 +315,16 @@ export class AppHeader extends LitElement {
         this.isVisible = true;
         this.isAnimating = false;
         this.hasSlidIn = false;
-        this.settingsHideTimer = null; // Settings 숨기기 타이머
+        this.settingsHideTimer = null;
         this.isSessionActive = false;
 
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
-            // 필요한 이벤트 리스너들만 유지
             
-            // show/hide 토글 이벤트 리스너 추가 (애니메이션 포함)
             ipcRenderer.on('toggle-header-visibility', () => {
                 this.toggleVisibility();
             });
 
-            // Settings 창 숨기기 취소 리스너
             ipcRenderer.on('cancel-hide-settings', () => {
                 this.cancelHideWindow('settings');
             });
@@ -365,7 +359,6 @@ export class AppHeader extends LitElement {
         const deltaX = Math.abs(e.screenX - this.dragState.initialMouseX);
         const deltaY = Math.abs(e.screenY - this.dragState.initialMouseY);
         
-        // 3px 이상 움직였을 때 드래그로 인식
         if (deltaX > 3 || deltaY > 3) {
             this.dragState.moved = true;
         }
@@ -426,7 +419,6 @@ export class AppHeader extends LitElement {
             this.classList.remove('hiding');
             this.classList.add('hidden');
             
-            // 애니메이션이 완료되면 실제로 윈도우를 숨김
             if (window.require) {
                 const { ipcRenderer } = window.require('electron');
                 ipcRenderer.send('header-animation-complete', 'hidden');
@@ -434,7 +426,6 @@ export class AppHeader extends LitElement {
         } else if (this.classList.contains('showing')) {
             this.classList.remove('showing');
             
-            // 애니메이션이 완료되면 다른 윈도우들도 표시
             if (window.require) {
                 const { ipcRenderer } = window.require('electron');
                 ipcRenderer.send('header-animation-complete', 'visible');
@@ -493,7 +484,6 @@ export class AppHeader extends LitElement {
             const { ipcRenderer } = window.require('electron');
             console.log(`[AppHeader] showWindow('${name}') called at ${Date.now()}`);
             
-            // 창을 보여주기 전에 숨기기 타이머를 취소
             ipcRenderer.send('cancel-hide-window', name);
 
             if (name === 'settings' && element) {
@@ -522,7 +512,7 @@ export class AppHeader extends LitElement {
     }
 
     cancelHideWindow(name) {
-        // 이 로직은 이제 메인 프로세스에서 처리되므로 여기서는 비워둡니다.
+
     }
 
     render() {

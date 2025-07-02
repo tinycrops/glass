@@ -1,15 +1,12 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // 사용자는 자신의 문서에만 접근 가능
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // 사용자의 세션 서브컬렉션
       match /sessions/{sessionId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
         
-        // 세션의 서브컬렉션들
         match /transcripts/{transcriptId} {
           allow read, write: if request.auth != null && request.auth.uid == userId;
         }
@@ -23,7 +20,6 @@ service cloud.firestore {
         }
       }
       
-      // 사용자의 프롬프트 프리셋 서브컬렉션
       match /promptPresets/{presetId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }

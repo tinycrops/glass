@@ -1,14 +1,11 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// This client is used by the Electron main process.
-// It should reflect the schema defined in `pickleglass_web/backend_node/db.js`.
-
 class SQLiteClient {
     constructor() {
         this.db = null;
         this.dbPath = path.join(__dirname, '../../../data/pickleglass.db');
-        this.defaultUserId = 'default_user'; // Consistent naming
+        this.defaultUserId = 'default_user';
     }
 
     async connect() {
@@ -154,8 +151,6 @@ class SQLiteClient {
         });
     }
 
-    // --- New Methods for Modern Schema ---
-
     async findOrCreateUser(user) {
         return new Promise((resolve, reject) => {
             const { uid, display_name, email } = user;
@@ -241,8 +236,6 @@ class SQLiteClient {
             });
         });
     }
-
-    // --- Session Data Methods ---
 
     async createSession(uid) {
         return new Promise((resolve, reject) => {

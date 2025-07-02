@@ -195,12 +195,10 @@ export class ApiKeyHeader extends LitElement {
     }
 
     async handleMouseDown(e) {
-        // 입력 필드나 버튼 클릭 시에는 드래그 방지
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') {
             return;
         }
 
-        // 헤더의 빈 공간에서만 드래그 허용
         e.preventDefault();
 
         const { ipcRenderer } = window.require('electron');
@@ -214,7 +212,6 @@ export class ApiKeyHeader extends LitElement {
             moved: false,
         };
 
-        // 드래그 이벤트 등록
         window.addEventListener('mousemove', this.handleMouseMove);
         window.addEventListener('mouseup', this.handleMouseUp, { once: true });
     }
@@ -225,7 +222,6 @@ export class ApiKeyHeader extends LitElement {
         const deltaX = Math.abs(e.screenX - this.dragState.initialMouseX);
         const deltaY = Math.abs(e.screenY - this.dragState.initialMouseY);
         
-        // 3px 이상 움직였을 때 드래그로 인식
         if (deltaX > 3 || deltaY > 3) {
             this.dragState.moved = true;
         }
@@ -249,7 +245,7 @@ export class ApiKeyHeader extends LitElement {
             this.wasJustDragged = true;
             setTimeout(() => {
                 this.wasJustDragged = false;
-            }, 200); // 더 긴 시간으로 확실한 구분
+            }, 200);
         }
     }
 
@@ -258,7 +254,6 @@ export class ApiKeyHeader extends LitElement {
         this.errorMessage = '';
         console.log('Input changed:', this.apiKey?.length || 0, 'chars');
         
-        // DOM 업데이트 후 포커스 유지
         this.requestUpdate();
         this.updateComplete.then(() => {
             const inputField = this.shadowRoot?.querySelector('.apikey-input');
@@ -269,7 +264,7 @@ export class ApiKeyHeader extends LitElement {
     }
 
     handlePaste(e) {
-        e.preventDefault(); // 기본 붙여넣기 차단 (보안 이슈 방지)
+        e.preventDefault();
         this.errorMessage = '';
         const clipboardText = (e.clipboardData || window.clipboardData).getData('text');
         console.log('Paste event detected:', clipboardText?.substring(0, 10) + '...');
@@ -277,12 +272,10 @@ export class ApiKeyHeader extends LitElement {
         if (clipboardText) {
             this.apiKey = clipboardText.trim();
 
-            // DOM 상의 입력 요소 값 직접 갱신 (재렌더 전 유지)
             const inputElement = e.target;
             inputElement.value = this.apiKey;
         }
 
-        // DOM 업데이트 후 포커스 및 커서 유지
         this.requestUpdate();
         this.updateComplete.then(() => {
             const inputField = this.shadowRoot?.querySelector('.apikey-input');
@@ -394,7 +387,6 @@ export class ApiKeyHeader extends LitElement {
             this.classList.remove('sliding-out');
             this.classList.add('hidden');
             
-            // API 키 유효성 검사가 성공한 경우에만 Main 프로세스에 알림
             if (this.validatedApiKey) {
                 if (window.require) {
                     window.require('electron').ipcRenderer.invoke('api-key-validated', this.validatedApiKey);
@@ -408,7 +400,6 @@ export class ApiKeyHeader extends LitElement {
         super.connectedCallback();
         this.addEventListener('animationend', this.handleAnimationEnd);
 
-        // Main 프로세스로부터의 로그인 성공 신호를 감지
         if (window.require) {
             window.require('electron').ipcRenderer.on('login-successful', () => {
                 console.log('Received login-successful signal, hiding ApiKeyHeader.');

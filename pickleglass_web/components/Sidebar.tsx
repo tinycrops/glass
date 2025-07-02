@@ -20,7 +20,6 @@ import {
 import { logout, UserProfile, checkApiKeyStatus } from '@/utils/api'
 import { useAuth } from '@/utils/auth'
 
-// 상수 정의
 const ANIMATION_DURATION = {
   SIDEBAR: 500,
   TEXT: 300,
@@ -31,11 +30,11 @@ const ANIMATION_DURATION = {
 } as const
 
 const DIMENSIONS = {
-  SIDEBAR_EXPANDED: 220, // w-55 = 220px (실제 Cluely 비율)
-  SIDEBAR_COLLAPSED: 64, // w-16 = 64px (적당한 크기)
-  ICON_SIZE: 18, // 아이콘 크기 적절히 (좀 더 작게)
-  USER_AVATAR_SIZE: 32, // 아바타 크기 적절히
-  HEADER_HEIGHT: 64, // 헤더 높이 적절히
+  SIDEBAR_EXPANDED: 220,
+  SIDEBAR_COLLAPSED: 64,
+  ICON_SIZE: 18,
+  USER_AVATAR_SIZE: 32,
+  HEADER_HEIGHT: 64,
 } as const
 
 const ANIMATION_DELAYS = {
@@ -45,7 +44,6 @@ const ANIMATION_DELAYS = {
   SUBMENU_INCREMENT: 30,
 } as const
 
-// 타입 정의 강화
 interface NavigationItem {
   name: string
   href?: string
@@ -77,7 +75,6 @@ interface AnimationStyles {
   textContainer: React.CSSProperties
 }
 
-// 커스텀 훅: 애니메이션 로직 분리
 const useAnimationStyles = (isCollapsed: boolean) => {
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -87,7 +84,6 @@ const useAnimationStyles = (isCollapsed: boolean) => {
     return () => clearTimeout(timer)
   }, [isCollapsed])
 
-  // 🔥 프로덕션 레벨 애니메이션: Transform 기반으로 일관된 속도감 제공
   const getTextAnimationStyle = useCallback((delay = 0): React.CSSProperties => ({
     willChange: 'opacity',
     transition: `opacity ${ANIMATION_DURATION.TEXT}ms ease-out`,
@@ -108,14 +104,12 @@ const useAnimationStyles = (isCollapsed: boolean) => {
     transition: `width ${ANIMATION_DURATION.SIDEBAR}ms cubic-bezier(0.4, 0, 0.2, 1)`,
   }), [])
 
-  // 🎯 핵심: 고정된 컨테이너 크기 + 내부 컨텐츠만 transform
   const getTextContainerStyle = useCallback((): React.CSSProperties => ({
     width: isCollapsed ? '0px' : '150px',
     overflow: 'hidden',
     transition: `width ${ANIMATION_DURATION.SIDEBAR}ms cubic-bezier(0.4, 0, 0.2, 1)`,
   }), [isCollapsed])
   
-  // 🌟 새로운 텍스트 애니메이션: opacity 전환만 사용 + 열릴 때 살짝 딜레이
   const getUniformTextStyle = useCallback((): React.CSSProperties => ({
     willChange: 'opacity',
     opacity: isCollapsed ? 0 : 1,
@@ -133,7 +127,6 @@ const useAnimationStyles = (isCollapsed: boolean) => {
   }
 }
 
-// 메모이제이션된 아이콘 컴포넌트
 const IconComponent = memo<{
   icon: LucideIcon | string
   isLucide: boolean
@@ -158,7 +151,6 @@ const IconComponent = memo<{
 
 IconComponent.displayName = 'IconComponent'
 
-// Sidebar 컴포넌트 정의
 const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps) => {
   const pathname = usePathname()
   const router = useRouter()
@@ -184,14 +176,12 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
       })
   }, [])
 
-  // Synchronize Settings menu expansion state based on URL path
   useEffect(() => {
     if (pathname.startsWith('/settings')) {
       setIsSettingsExpanded(true)
     }
   }, [pathname])
 
-  // Memoized navigation data
   const navigation = useMemo<NavigationItem[]>(() => [
     { 
       name: 'Search', 
@@ -245,13 +235,11 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     }
   ], [])
 
-  // Memoized event handlers
   const toggleSidebar = useCallback(() => {
     onToggle(!isCollapsed)
   }, [isCollapsed, onToggle])
 
   const toggleSettings = useCallback(() => {
-    // Allow toggle only when not on settings page to encourage users to maintain current state
     if (!pathname.startsWith('/settings')) {
       setIsSettingsExpanded(prev => !prev)
     }
@@ -262,11 +250,9 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
       await logout()
     } catch (error) {
       console.error('An error occurred during logout:', error)
-      // Provide error feedback to user (toast, etc.)
     }
   }, [])
 
-  // 키보드 네비게이션 핸들러
   const handleKeyDown = useCallback((event: React.KeyboardEvent, action?: () => void) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
@@ -276,7 +262,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
 
     const renderNavigationItem = useCallback((item: NavigationItem, index: number) => {
     const isActive = item.href ? pathname.startsWith(item.href) : false
-    const animationDelay = 0 // 애니메이션 딜레이 통일
+    const animationDelay = 0
 
     const baseButtonClasses = `
       group flex items-center rounded-lg p-2.5 text-xs font-medium w-full relative
@@ -362,7 +348,6 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                         </div>
                       </button>
                       
-                      {/* Settings Submenu */}
                       <div 
             id="settings-submenu"
                         className="overflow-hidden"
@@ -413,10 +398,10 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                                   `}
                                   style={{ willChange: 'background-color, color' }}
                                   role="menuitem"
-                                  aria-label="로그아웃"
+                                  aria-label="Logout"
                                 >
                                   <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                  <span className="whitespace-nowrap">로그아웃</span>
+                                  <span className="whitespace-nowrap">Logout</span>
                                 </button>
                             ) : (
                                <Link
@@ -429,10 +414,10 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                                   `}
                                   style={{ willChange: 'background-color, color' }}
                                   role="menuitem"
-                                  aria-label="로그인"
+                                  aria-label="Login"
                                 >
                                   <LogOut className="h-3.5 w-3.5 shrink-0 transform -scale-x-100" aria-hidden="true" />
-                                  <span className="whitespace-nowrap">로그인</span>
+                                  <span className="whitespace-nowrap">Login</span>
                                 </Link>
                             )}
                           </li>
@@ -508,13 +493,12 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
       }`}
       style={sidebarContainerStyle}
       role="navigation"
-      aria-label="메인 네비게이션"
+      aria-label="main navigation"
       aria-expanded={!isCollapsed}
     >
-      {/* Logo + Integrated Toggle */}
+
       <header className={`group relative flex h-16 shrink-0 items-center ${isCollapsed ? 'justify-center' : 'px-4'}`}>
         {isCollapsed ? (
-          // Collapsed state: Logo only (no link) + toggle appears on hover
           <>
             <Image
               src="/symbol.svg"
@@ -522,18 +506,16 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
               width={32}
               height={32}
               className="h-8 w-8 shrink-0"/>
-            {/* Overlay Toggle */}
             <button
               onClick={toggleSidebar}
               onKeyDown={(e) => handleKeyDown(e, toggleSidebar)}
               className="absolute inset-0 flex items-center justify-center text-gray-500 hover:text-gray-800 rounded-md opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 ease-out focus:outline-none"
-              aria-label="사이드바 열기"
+              aria-label="Open sidebar"
             >
               <Image src="/unfold.svg" alt="Open" width={18} height={18} className="h-4.5 w-4.5"/>
             </button>
           </>
         ) : (
-          // Expanded state: Logo is a link, toggle button at right
           <>
             <Link href="https://pickle.com" target="_blank" rel="noopener noreferrer" className="flex items-center">
               <Image
@@ -547,15 +529,14 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
               onClick={toggleSidebar}
               onKeyDown={(e) => handleKeyDown(e, toggleSidebar)}
               className="ml-auto text-gray-500 hover:text-gray-800 p-1 rounded-md hover:bg-gray-100 transition-colors focus:outline-none"
-              aria-label="사이드바 닫기">
+              aria-label="Close sidebar">
               <Image src="/unfold.svg" alt="Close" width={20} height={20} className="h-5 w-5 transform rotate-180"/>
             </button>
           </>
         )}
       </header>
 
-      {/* Navigation */}
-      <nav className="flex flex-1 flex-col py-4 px-2" role="navigation" aria-label="주요 메뉴">
+      <nav className="flex flex-1 flex-col py-4 px-2" role="navigation" aria-label="Main menu">
         <ul role="list" className="flex flex-1 flex-col gap-y-2">
           <li>
             <ul role="list" className="space-y-0.5">
@@ -564,7 +545,6 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
           </li>
         </ul>
 
-        {/* System Status */}
         {!isCollapsed && hasApiKey !== null && (
            <div className="px-2.5 py-2 text-center">
              <span
@@ -574,13 +554,12 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                         : 'bg-green-100 text-green-800'
                 }`}
              >
-                {hasApiKey ? 'Running Locally' : 'Using Pickle Free System'}
+                {hasApiKey ? 'Local running' : 'Pickle Free System'}
              </span>
            </div>
         )}
 
-        {/* Bottom Items */}
-        <div className="mt-auto space-y-1" role="navigation" aria-label="추가 링크">
+        <div className="mt-auto space-y-1" role="navigation" aria-label="Additional links">
           {bottomItems.map((item, index) => (
             <Link
               key={item.text}
@@ -616,7 +595,6 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
           ))}
         </div>
 
-        {/* User Profile */}
         <div 
           className="mt-6 flex items-center"
           style={{
@@ -625,7 +603,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
             transition: `all ${ANIMATION_DURATION.SIDEBAR}ms cubic-bezier(0.4, 0, 0.2, 1)`,
           }}
           role="region"
-          aria-label="사용자 정보"
+          aria-label="User profile"
         >
           <div 
             className={`
@@ -637,7 +615,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
             style={{ willChange: 'background-color, transform' }}
             tabIndex={0}
             role="button"
-            aria-label={`사용자: ${getUserDisplayName()}`}
+            aria-label={`User: ${getUserDisplayName()}`}
             onKeyDown={(e) => handleKeyDown(e, () => {
                 if (isFirebaseUser) {
                     router.push('/settings');
@@ -666,7 +644,6 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
   )
 }
 
-// 메모이제이션된 컴포넌트 내보내기
 const Sidebar = memo(SidebarComponent)
 Sidebar.displayName = 'Sidebar'
 

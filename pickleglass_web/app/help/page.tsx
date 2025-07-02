@@ -4,10 +4,8 @@ import { HelpCircle, Book, MessageCircle, Mail } from 'lucide-react'
 import { useRedirectIfNotAuth } from '@/utils/auth'
 
 export default function HelpPage() {
-  // 항상 모든 hooks 호출
   const userInfo = useRedirectIfNotAuth()
 
-  // 조건부 return 제거 - 대신 조건부 렌더링 사용
   if (!userInfo) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

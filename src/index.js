@@ -139,6 +139,10 @@ function setupGeneralIpcHandlers() {
         return await dataService.getUserPresets();
     });
 
+    ipcMain.handle('get-preset-templates', async () => {
+        return await dataService.getPresetTemplates();
+    });
+
     ipcMain.on('set-current-user', (event, uid) => {
         console.log(`[IPC] set-current-user: ${uid}`);
         dataService.setCurrentUser(uid);
@@ -252,25 +256,52 @@ async function handleCustomUrl(url) {
 }
 
 async function handleFirebaseAuthCallback(params) {
-    const { token: idToken, uid, email, displayName } = params;
-    
-    if (!idToken && !uid) {
-        console.error('[Auth] Firebase auth callback is missing required data.');
+    const { token: idToken } = params;
+
+    if (!idToken) {
+        console.error('[Auth] Firebase auth callback is missing ID token.');
+        const { windowPool } = require('./electron/windowManager');
+        const header = windowPool.get('header');
+        if (header) {
+            header.webContents.send('login-successful', {
+                error: 'authentication_failed',
+                message: 'ID token not provided in deep link.'
+            });
+        }
         return;
     }
 
-    console.log('[Auth] Processing Firebase auth callback with data:', { uid, email, displayName });
+    console.log('[Auth] Received ID token from deep link, exchanging for custom token...');
 
     try {
+        const functionUrl = 'https://us-west1-pickle-3651a.cloudfunctions.net/pickleGlassAuthCallback';
+        const response = await fetch(functionUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: idToken })
+        });
+
+        const data = await response.json();
+
+
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to exchange token.');
+        }
+
+        const { customToken, user } = data;
+        console.log('[Auth] Successfully received custom token for user:', user.uid);
+
         const firebaseUser = {
-            uid: uid,
-            email: email || 'no-email@example.com',
-            displayName: displayName || 'User',
-            idToken: idToken
+            uid: user.uid,
+            email: user.email || 'no-email@example.com',
+            displayName: user.name || 'User',
+            photoURL: user.picture
         };
 
         await dataService.findOrCreateUser(firebaseUser);
-        dataService.setCurrentUser(uid);
+        dataService.setCurrentUser(user.uid);
+        console.log('[Auth] User data synced with local DB.');
 
         if (firebaseUser.email && firebaseUser.idToken) {
             try {
@@ -299,32 +330,32 @@ async function handleFirebaseAuthCallback(params) {
 
         const { windowPool } = require('./electron/windowManager');
         const header = windowPool.get('header');
+
         if (header) {
             if (header.isMinimized()) header.restore();
             header.focus();
             
-            console.log('[Auth] Sending firebase-auth-success to header window');
-            header.webContents.send('firebase-auth-success', firebaseUser);
-            
+            console.log('[Auth] Sending custom token to renderer for sign-in.');
             header.webContents.send('login-successful', { 
-                customToken: null, 
+                customToken: customToken, 
                 user: firebaseUser,
                 success: true 
             });
+
+            BrowserWindow.getAllWindows().forEach(win => {
+                if (win !== header) {
+                    win.webContents.send('user-changed', firebaseUser);
+                }
+            });
+
+            console.log('[Auth] Firebase authentication completed successfully');
+
         } else {
-            console.error('[Auth] Header window not found');
+            console.error('[Auth] Header window not found after getting custom token.');
         }
-
-        BrowserWindow.getAllWindows().forEach(win => {
-            if (win !== header) {
-                win.webContents.send('user-changed', firebaseUser);
-            }
-        });
-
-        console.log('[Auth] Firebase authentication completed successfully');
         
     } catch (error) {
-        console.error('[Auth] Error during Firebase auth callback:', error);
+        console.error('[Auth] Error during custom token exchange:', error);
         
         const { windowPool } = require('./electron/windowManager');
         const header = windowPool.get('header');
@@ -396,7 +427,10 @@ async function startWebStack() {
   const createBackendApp = require('../pickleglass_web/backend_node');
   const nodeApi = createBackendApp();
 
-  const staticDir = path.join(__dirname, '..', 'pickleglass_web', 'out');
+  const staticDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'out')
+    : path.join(__dirname, '..', 'pickleglass_web', 'out');
+
   const fs = require('fs');
 
   if (!fs.existsSync(staticDir)) {
@@ -415,19 +449,19 @@ async function startWebStack() {
     timestamp: Date.now()
   };
   
-  const configPath = path.join(staticDir, 'runtime-config.json');
+  // 쓰기 가능한 임시 폴더에 런타임 설정 파일 생성
+  const tempDir = app.getPath('temp');
+  const configPath = path.join(tempDir, 'runtime-config.json');
   fs.writeFileSync(configPath, JSON.stringify(runtimeConfig, null, 2));
-  console.log(`📝 Runtime config created: ${configPath}`);
-  console.log(`📝 Runtime config content:`, runtimeConfig);
-  
-  if (fs.existsSync(configPath)) {
-    console.log(`✅ Runtime config file verified: ${configPath}`);
-  } else {
-    console.error(`❌ Runtime config file creation failed: ${configPath}`);
-  }
+  console.log(`📝 Runtime config created in temp location: ${configPath}`);
 
   const frontSrv = express();
   
+  // 프론트엔드에서 /runtime-config.json을 요청하면 임시 폴더의 파일을 제공
+  frontSrv.get('/runtime-config.json', (req, res) => {
+    res.sendFile(configPath);
+  });
+
   frontSrv.use((req, res, next) => {
     if (req.path.indexOf('.') === -1 && req.path !== '/') {
       const htmlPath = path.join(staticDir, req.path + '.html');

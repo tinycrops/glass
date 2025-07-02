@@ -779,7 +779,6 @@ function createWindows(sendToRenderer, openaiSessionRef) {
     listen.setContentProtection(isContentProtectionOn);
     listen.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     listen.loadFile(path.join(__dirname, '../app/content.html'), { query: { view: 'listen' } });
-    listen.webContents.openDevTools({ mode: 'detach', activate: false });
     windowPool.set('listen', listen);
 
     const ask = new BrowserWindow({ ...commonChildOptions, width: 600, height: 350 });
@@ -799,8 +798,6 @@ function createWindows(sendToRenderer, openaiSessionRef) {
     });
     settings.setContentProtection(isContentProtectionOn);
     settings.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    
-    settings.webContents.openDevTools({ mode: 'detach', activate: false });
     
     console.log('Settings window created with bounds:', settings.getBounds());
     

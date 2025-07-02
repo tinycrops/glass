@@ -1,45 +1,72 @@
-const fs = require('fs');
+const { app } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const sqliteClient = require('./sqliteClient');
 const config = require('../config/config');
 
 class DatabaseInitializer {
     constructor() {
         this.isInitialized = false;
-        this.dbPath = path.join(__dirname, '../../../data/pickleglass.db');
-        this.dataDir = path.join(__dirname, '../../../data');
+        
+        // 최종적으로 사용될 DB 경로 (쓰기 가능한 위치)
+        const userDataPath = app.getPath('userData');
+        this.dbPath = path.join(userDataPath, 'pickleglass.db');
+        this.dataDir = userDataPath;
+
+        // 원본 DB 경로 (패키지 내 읽기 전용 위치)
+        this.sourceDbPath = app.isPackaged
+            ? path.join(process.resourcesPath, 'data', 'pickleglass.db')
+            : path.join(app.getAppPath(), 'data', 'pickleglass.db');
+    }
+
+    ensureDatabaseExists() {
+        if (!fs.existsSync(this.dbPath)) {
+            console.log(`[DB] Database not found at ${this.dbPath}. Copying from source...`);
+            
+            try {
+                // userData 디렉토리 생성 (없을 경우)
+                if (!fs.existsSync(this.dataDir)) {
+                    fs.mkdirSync(this.dataDir, { recursive: true });
+                }
+
+                // 원본 DB 파일 복사
+                fs.copyFileSync(this.sourceDbPath, this.dbPath);
+                console.log(`[DB] Database successfully copied to ${this.dbPath}`);
+
+            } catch (error) {
+                console.error(`[DB] Failed to copy database from ${this.sourceDbPath} to ${this.dbPath}:`, error);
+                // 복사 실패 시 심각한 문제이므로 앱을 종료하거나 에러 처리 필요
+                throw new Error('Could not create user database.');
+            }
+        }
     }
 
     async initialize() {
         if (this.isInitialized) {
-            console.log('[DatabaseInitializer] Already initialized');
+            console.log('[DB] Already initialized.');
             return true;
         }
 
         try {
-            console.log('[DatabaseInitializer] Starting database initialization...');
+            this.ensureDatabaseExists();
+
+            await sqliteClient.connect(this.dbPath); // DB 경로를 인자로 전달
             
-            await this.ensureDataDirectory();
-            
-            const dbExists = await this.checkDatabaseExists();
-            
-            if (!dbExists) {
-                console.log('[DatabaseInitializer] Database not found - creating new database...');
-                await this.createNewDatabase();
-            } else {
-                console.log('[DatabaseInitializer] Database found - connecting to existing database...');
-                await this.connectToExistingDatabase();
+            // 연결 후 테이블 및 기본 데이터 초기화
+            await sqliteClient.initTables();
+            const user = await sqliteClient.getUser(sqliteClient.defaultUserId);
+            if (!user) {
+                await sqliteClient.initDefaultData();
+                console.log('[DB] Default data initialized.');
             }
 
-            await this.validateAndRecoverData();
-
             this.isInitialized = true;
-            console.log('[DatabaseInitializer] Database initialization completed successfully');
+            console.log('[DB] Database initialized successfully');
             return true;
-
         } catch (error) {
-            console.error('[DatabaseInitializer] Database initialization failed:', error);
-            return false;
+            console.error('[DB] Database initialization failed:', error);
+            this.isInitialized = false;
+            throw error; 
         }
     }
 
@@ -179,6 +206,10 @@ class DatabaseInitializer {
         }
         this.isInitialized = false;
         console.log('[DatabaseInitializer] Database connection closed');
+    }
+
+    getDatabasePath() {
+        return this.dbPath;
     }
 }
 

@@ -4,24 +4,31 @@ const path = require('path');
 class SQLiteClient {
     constructor() {
         this.db = null;
-        this.dbPath = path.join(__dirname, '../../../data/pickleglass.db');
+        this.dbPath = null;
         this.defaultUserId = 'default_user';
     }
 
-    async connect() {
+    connect(dbPath) {
         return new Promise((resolve, reject) => {
             if (this.db) {
-                resolve();
-                return;
+                console.log('[SQLiteClient] Already connected.');
+                return resolve();
             }
+
+            this.dbPath = dbPath;
             this.db = new sqlite3.Database(this.dbPath, (err) => {
                 if (err) {
-                    console.error('SQLite connection failed:', err);
-                    reject(err);
-                } else {
-                    console.log(`SQLite connected successfully: ${this.dbPath}`);
-                    this.initTables().then(resolve).catch(reject);
+                    console.error('[SQLiteClient] Could not connect to database', err);
+                    return reject(err);
                 }
+                console.log('[SQLiteClient] Connected successfully to:', this.dbPath);
+                
+                this.db.run('PRAGMA journal_mode = WAL;', (err) => {
+                    if (err) {
+                        return reject(err);
+                    }
+                    resolve();
+                });
             });
         });
     }

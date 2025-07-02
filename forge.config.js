@@ -9,8 +9,8 @@ module.exports = {
                 '**/*.node,**/*.dylib,' +
                 '**/node_modules/{sharp,@img}/**/*'
         },
-        extraResource: ['./src/assets/SystemAudioDump'],
-        name: 'Pickle Glass',
+        extraResource: ['./src/assets/SystemAudioDump', './pickleglass_web/out'],
+        name: 'Glass',
         icon: 'src/assets/logo',
         appBundleId: 'com.pickle.glass',
         asarUnpack: [
@@ -38,8 +38,8 @@ module.exports = {
             name: '@electron-forge/maker-squirrel',
             config: {
                 name: 'pickle-glass',
-                productName: 'Pickle Glass',
-                shortcutName: 'Pickle Glass',
+                productName: 'Glass',
+                shortcutName: 'Glass',
                 createDesktopShortcut: true,
                 createStartMenuShortcut: true,
             },

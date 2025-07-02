@@ -795,21 +795,55 @@ export class AssistantView extends LitElement {
         const container = this.shadowRoot.querySelector('.transcription-container');
         this._shouldScrollAfterUpdate = container ? (container.scrollTop + container.clientHeight >= container.scrollHeight - 10) : false;
 
-        const lastMessage = this.sttMessages.length > 0 ? this.sttMessages[this.sttMessages.length - 1] : null;
+                const findLastPartialIdx = (spk) => {
+                        for (let i = this.sttMessages.length - 1; i >= 0; i--) {
+                            const m = this.sttMessages[i];
+                            if (m.speaker === spk && m.isPartial) return i;
+                       }
+                        return -1;
+                    };
+            
+                    const newMessages = [...this.sttMessages];
+                    const targetIdx = findLastPartialIdx(speaker);
+            
+                if (isPartial) {
+                        if (targetIdx !== -1) {
+                            newMessages[targetIdx] = {
+                                ...newMessages[targetIdx],
+                                text,
+                                isPartial: true,
+                                isFinal: false,
+                            };
+                        } else {
+                            newMessages.push({
+                                id: this.messageIdCounter++,
+                                speaker,
+                                text,
+                                isPartial: true,
+                                isFinal: false,
+                            });
+                        }
+                    } else if (isFinal) {
+                        if (targetIdx !== -1) {
+                            newMessages[targetIdx] = {
+                                ...newMessages[targetIdx],
+                                text,
+                                isPartial: false,
+                                isFinal: true,
+                            };
+                        } else {
+                            newMessages.push({
+                                id: this.messageIdCounter++,
+                                speaker,
+                                text,
+                                isPartial: false,
+                                isFinal: true,
+                            });
+                        }
+                    }
+            
+                    this.sttMessages = newMessages;
 
-
-        if (lastMessage && lastMessage.speaker === speaker && lastMessage.isPartial) {
-            const updatedMessage = { ...lastMessage, text: text, isFinal: isFinal, isPartial: isPartial };
-            this.sttMessages = [...this.sttMessages.slice(0, -1), updatedMessage];
-        } else {
-            this.sttMessages = [...this.sttMessages, { 
-                id: this.messageIdCounter++, 
-                speaker, 
-                text, 
-                isFinal,
-                isPartial
-            }];
-        }
     }
 
     scrollToTranscriptionBottom() {

@@ -23,8 +23,8 @@ let lastScreenshotBase64 = null; // Store the latest screenshot
 
 let realtimeConversationHistory = [];
 
-const CLUELY_CHAT_SYSTEM_PROMPT = `<core_identity>
-You are Cluely, developed and created by Cluely, and you are the user's live-meeting co-pilot.
+const PICKLE_GLASS_SYSTEM_PROMPT = `<core_identity>
+You are Pickle-Glass, developed and created by Pickle-Glass, and you are the user's live-meeting co-pilot.
 </core_identity>
 
 <objective>
@@ -981,7 +981,7 @@ async function sendMessage(userPrompt, options = {}) {
         const conversationHistory = formatRealtimeConversationHistory();
         console.log(`📝 Using conversation history: ${realtimeConversationHistory.length} texts`);
         
-        const systemPrompt = CLUELY_CHAT_SYSTEM_PROMPT.replace('{{CONVERSATION_HISTORY}}', conversationHistory);
+        const systemPrompt = PICKLE_GLASS_SYSTEM_PROMPT.replace('{{CONVERSATION_HISTORY}}', conversationHistory);
         
         let API_KEY = localStorage.getItem('openai_api_key');
         

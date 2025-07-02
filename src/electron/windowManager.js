@@ -1338,7 +1338,8 @@ function setupIpcHandlers(openaiSessionRef) {
                 await fs.promises.unlink(tempPath);
 
                 const resizedBuffer = await sharp(imageBuffer)
-                    .resize({ height: 1080 })
+                    // .resize({ height: 1080 })
+                    .resize({ height: 384 })
                     .jpeg({ quality: 80 })
                     .toBuffer();
 

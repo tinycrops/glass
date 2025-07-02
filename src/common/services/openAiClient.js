@@ -27,7 +27,7 @@ function createOpenAiGenerativeClient(apiKey) {
  * Connects to an OpenAI Realtime WebSocket session for STT.
  * @param {string} key     - Portkey vKey  or  OpenAI apiKey.
  * @param {object} config - The configuration object for the realtime session.
- * @param {'apiKey'|'vKey'} keyType - key의 종류를 명시 ('apiKey' | 'vKey').
+ * @param {'apiKey'|'vKey'} keyType -   key type ('apiKey' | 'vKey').
  * @returns {Promise<object>} A promise that resolves to the session object with send and close methods.
  */
 async function connectToOpenAiSession(key, config, keyType) {

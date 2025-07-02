@@ -20,6 +20,7 @@ const path = require('node:path');
 const { Deeplink } = require('electron-deeplink');
 const express = require('express');
 const fetch = require('node-fetch');
+const { autoUpdater } = require('electron-updater');
 
 let WEB_PORT = 3000;
 
@@ -85,6 +86,8 @@ app.whenReady().then(async () => {
     setupGeneralIpcHandlers();
 
     createMainWindows();
+
+    initAutoUpdater();
 });
 
 app.on('window-all-closed', () => {
@@ -461,4 +464,44 @@ async function startWebStack() {
   console.log(`   API:      http://localhost:${apiPort}`);
 
   return frontendPort;
+}
+
+// Auto-update initialization
+function initAutoUpdater() {
+    try {
+        // Skip auto-updater in development mode
+        if (!app.isPackaged) {
+            console.log('[AutoUpdater] Skipped in development (app is not packaged)');
+            return;
+        }
+
+        // Immediately check for updates & notify
+        autoUpdater.checkForUpdatesAndNotify();
+
+        autoUpdater.on('checking-for-update', () => {
+            console.log('[AutoUpdater] Checking for updates…');
+        });
+
+        autoUpdater.on('update-available', (info) => {
+            console.log('[AutoUpdater] Update available:', info.version);
+        });
+
+        autoUpdater.on('update-not-available', () => {
+            console.log('[AutoUpdater] Application is up-to-date');
+        });
+
+        autoUpdater.on('error', (err) => {
+            console.error('[AutoUpdater] Error while updating:', err);
+        });
+
+        autoUpdater.on('update-downloaded', () => {
+            console.log('[AutoUpdater] Update downloaded – will quit and install');
+            // Give the UI a moment (or prompt the user) then restart.
+            setTimeout(() => {
+                autoUpdater.quitAndInstall();
+            }, 1000);
+        });
+    } catch (e) {
+        console.error('[AutoUpdater] Failed to initialise:', e);
+    }
 }

@@ -895,7 +895,6 @@ export class AssistantView extends LitElement {
                 if (!wasActive && isActive) {
                     this.hasCompletedRecording = false;
                 }
-
                 if (wasActive && !isActive) {
                     this.hasCompletedRecording = true;
                     

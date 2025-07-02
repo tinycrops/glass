@@ -5,6 +5,7 @@ let mediaStream = null;
 let screenshotInterval = null;
 let audioContext = null;
 let audioProcessor = null;
+let micMediaStream = null;
 let micAudioProcessor = null;
 let audioBuffer = [];
 const SAMPLE_RATE = 24000;
@@ -22,8 +23,8 @@ let lastScreenshotBase64 = null; // Store the latest screenshot
 
 let realtimeConversationHistory = [];
 
-const CLUELY_CHAT_SYSTEM_PROMPT = `<core_identity>
-You are Cluely, developed and created by Cluely, and you are the user's live-meeting co-pilot.
+const PICKLE_GLASS_SYSTEM_PROMPT = `<core_identity>
+You are Pickle-Glass, developed and created by Pickle-Glass, and you are the user's live-meeting co-pilot.
 </core_identity>
 
 <objective>
@@ -568,9 +569,9 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             // });
 
             ////////// for index & subjects //////////
-            let micStream = null;
+
             try {
-                micStream = await navigator.mediaDevices.getUserMedia({
+                micMediaStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         sampleRate: SAMPLE_RATE,
                         channelCount: 1,
@@ -582,7 +583,7 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                 });
 
                 console.log('macOS microphone capture started');
-                setupMicProcessing(micStream);
+                setupMicProcessing(micMediaStream);
             } catch (micErr) {
                 console.warn('Failed to get microphone on macOS:', micErr);
             }
@@ -601,9 +602,9 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             });
 
             // Get microphone input for Linux
-            let micStream = null;
+            let micMediaStream = null;
             try {
-                micStream = await navigator.mediaDevices.getUserMedia({
+                micMediaStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         sampleRate: SAMPLE_RATE,
                         channelCount: 1,
@@ -617,7 +618,7 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                 console.log('Linux microphone capture started');
 
                 // Setup audio processing for microphone on Linux
-                setupLinuxMicProcessing(micStream);
+                setupLinuxMicProcessing(micMediaStream);
             } catch (micError) {
                 console.warn('Failed to get microphone access on Linux:', micError);
                 // Continue without microphone if permission denied
@@ -879,6 +880,11 @@ function stopCapture() {
         mediaStream = null;
     }
 
+    if (micMediaStream) {
+        micMediaStream.getTracks().forEach(t => t.stop());
+        micMediaStream = null;
+    }
+
     // Stop screen capture in main process
     ipcRenderer.invoke('stop-screen-capture').catch(err => {
         console.error('Error stopping screen capture:', err);
@@ -975,7 +981,7 @@ async function sendMessage(userPrompt, options = {}) {
         const conversationHistory = formatRealtimeConversationHistory();
         console.log(`📝 Using conversation history: ${realtimeConversationHistory.length} texts`);
         
-        const systemPrompt = CLUELY_CHAT_SYSTEM_PROMPT.replace('{{CONVERSATION_HISTORY}}', conversationHistory);
+        const systemPrompt = PICKLE_GLASS_SYSTEM_PROMPT.replace('{{CONVERSATION_HISTORY}}', conversationHistory);
         
         let API_KEY = localStorage.getItem('openai_api_key');
         
@@ -1198,3 +1204,15 @@ window.pickleGlass = {
     isMacOS: isMacOS,
     e: pickleGlassElement,
 };
+
+// -------------------------------------------------------
+// 🔔 React to session state changes from the main process
+// When the session ends (isActive === false), ensure we stop
+// all local capture pipelines (mic, screen, etc.).
+// -------------------------------------------------------
+ipcRenderer.on('session-state-changed', (_event, { isActive }) => {
+    if (!isActive) {
+        console.log('[Renderer] Session ended – stopping local capture');
+        stopCapture();
+    }
+});

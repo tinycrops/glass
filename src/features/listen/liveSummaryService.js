@@ -141,7 +141,7 @@ async function makeOutlineAndRequests(conversationTexts, maxTurns = 30) {
     const recentConversation = formatConversationForPrompt(conversationTexts, maxTurns);
     console.log(`📝 Recent conversation (${conversationTexts.length} texts):\n${recentConversation.substring(0, 200)}...`);
     
-    const basePrompt = getSystemPrompt('cluely_analysis_latest', '', false);
+    const basePrompt = getSystemPrompt('pickle_glass_analysis', '', false);
     const systemPrompt = basePrompt.replace('{{CONVERSATION_HISTORY}}', recentConversation);
     console.log(`📋 Generated system prompt with conversation history`);
 

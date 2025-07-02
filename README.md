@@ -35,6 +35,9 @@
 - `Listen` starts note taking and live summary.
 - `Ctrl/Cmd + \` to hide, `Ctrl/Cmd + arrows` to move.
 
+### True Glass Design (Coming Soon)
+
+<img width="50%" alt="booking-screen" src="./public/assets/01.gif">
 
 ## Powering your AI
 

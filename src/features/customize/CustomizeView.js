@@ -1,7 +1,5 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 
-const dataService = (window.require && window.require('../common/services/dataService')) || undefined;
-
 export class CustomizeView extends LitElement {
     static styles = css`
         * {
@@ -263,6 +261,8 @@ export class CustomizeView extends LitElement {
         isContentProtectionOn: { type: Boolean },
         firebaseUser: { type: Object, state: true },
         apiKey: { type: String, state: true },
+        isLoading: { type: Boolean },
+        activeTab: { type: String },
     };
 
     constructor() {
@@ -285,6 +285,8 @@ export class CustomizeView extends LitElement {
         this.firebaseUser = null;
         this.apiKey = null;
         this.isContentProtectionOn = true;
+        this.isLoading = false;
+        this.activeTab = 'prompts';
 
         this.loadKeybinds();
         this.loadRateLimitSettings();
@@ -292,8 +294,6 @@ export class CustomizeView extends LitElement {
         this.loadBackgroundTransparency();
         this.loadFontSize();
         this.loadContentProtectionSettings();
-        this.loadUserPresets();
-        this.loadPresetTemplates();
         this.checkContentProtectionStatus();
         this.getApiKeyFromStorage();
     }
@@ -302,7 +302,7 @@ export class CustomizeView extends LitElement {
         super.connectedCallback();
         
         this.loadLayoutMode();
-        this.loadUserPresets();
+        this.loadInitialData();
 
         this.resizeHandler = () => {
             this.requestUpdate();
@@ -527,23 +527,21 @@ export class CustomizeView extends LitElement {
         return result;
     }
 
-    async loadUserPresets() {
-        try {
-            console.log('[CustomizeView] Loading user presets...');
-            
-            if (!dataService) {
-                console.log('[CustomizeView] dataService is not available');
-                this.userPresets = [];
-                return;
+    async loadInitialData() {
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            try {
+                this.isLoading = true;
+                this.userPresets = await ipcRenderer.invoke('get-user-presets');
+                this.presetTemplates = await ipcRenderer.invoke('get-preset-templates');
+                console.log('[CustomizeView] Loaded presets and templates via IPC');
+            } catch (error) {
+                console.error('[CustomizeView] Failed to load data via IPC:', error);
+            } finally {
+                this.isLoading = false;
             }
-
-            this.userPresets = await dataService.getUserPresets();
-            console.log('[CustomizeView] Loaded user presets:', this.userPresets);
-            this.requestUpdate();
-        } catch (error) {
-            console.error('[CustomizeView] Failed to load user presets:', error);
-            this.userPresets = [];
-            this.requestUpdate();
+        } else {
+            console.log('[CustomizeView] IPC not available');
         }
     }
 
@@ -883,26 +881,6 @@ export class CustomizeView extends LitElement {
         }
 
         this.requestUpdate();
-    }
-
-    async loadPresetTemplates() {
-        try {
-            console.log('[CustomizeView] Loading preset templates...');
-            
-            if (!dataService) {
-                console.log('[CustomizeView] dataService is not available');
-                this.presetTemplates = [];
-                return;
-            }
-
-            this.presetTemplates = await dataService.getPresetTemplates();
-            console.log('[CustomizeView] Loaded preset templates:', this.presetTemplates);
-            this.requestUpdate();
-        } catch (error) {
-            console.error('[CustomizeView] Failed to load preset templates:', error);
-            this.presetTemplates = [];
-            this.requestUpdate();
-        }
     }
 
     render() {

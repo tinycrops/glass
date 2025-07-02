@@ -679,9 +679,9 @@ async function startMacOSAudioCapture() {
 
     const { app } = require('electron');
     const path = require('path');
-    let systemAudioPath = app.isPackaged
+    const systemAudioPath = app.isPackaged
         ? path.join(process.resourcesPath, 'SystemAudioDump')
-        : path.join(__dirname, '../../assets', 'SystemAudioDump');
+        : path.join(app.getAppPath(), 'src', 'assets', 'SystemAudioDump');
 
     console.log('SystemAudioDump path:', systemAudioPath);
 

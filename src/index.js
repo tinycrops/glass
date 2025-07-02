@@ -139,6 +139,10 @@ function setupGeneralIpcHandlers() {
         return await dataService.getUserPresets();
     });
 
+    ipcMain.handle('get-preset-templates', async () => {
+        return await dataService.getPresetTemplates();
+    });
+
     ipcMain.on('set-current-user', (event, uid) => {
         console.log(`[IPC] set-current-user: ${uid}`);
         dataService.setCurrentUser(uid);
@@ -396,7 +400,10 @@ async function startWebStack() {
   const createBackendApp = require('../pickleglass_web/backend_node');
   const nodeApi = createBackendApp();
 
-  const staticDir = path.join(__dirname, '..', 'pickleglass_web', 'out');
+  const staticDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'out')
+    : path.join(__dirname, '..', 'pickleglass_web', 'out');
+
   const fs = require('fs');
 
   if (!fs.existsSync(staticDir)) {
@@ -415,19 +422,19 @@ async function startWebStack() {
     timestamp: Date.now()
   };
   
-  const configPath = path.join(staticDir, 'runtime-config.json');
+  // 쓰기 가능한 임시 폴더에 런타임 설정 파일 생성
+  const tempDir = app.getPath('temp');
+  const configPath = path.join(tempDir, 'runtime-config.json');
   fs.writeFileSync(configPath, JSON.stringify(runtimeConfig, null, 2));
-  console.log(`📝 Runtime config created: ${configPath}`);
-  console.log(`📝 Runtime config content:`, runtimeConfig);
-  
-  if (fs.existsSync(configPath)) {
-    console.log(`✅ Runtime config file verified: ${configPath}`);
-  } else {
-    console.error(`❌ Runtime config file creation failed: ${configPath}`);
-  }
+  console.log(`📝 Runtime config created in temp location: ${configPath}`);
 
   const frontSrv = express();
   
+  // 프론트엔드에서 /runtime-config.json을 요청하면 임시 폴더의 파일을 제공
+  frontSrv.get('/runtime-config.json', (req, res) => {
+    res.sendFile(configPath);
+  });
+
   frontSrv.use((req, res, next) => {
     if (req.path.indexOf('.') === -1 && req.path !== '/') {
       const htmlPath = path.join(staticDir, req.path + '.html');

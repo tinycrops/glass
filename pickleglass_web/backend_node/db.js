@@ -1,7 +1,8 @@
 const path = require('path');
+const databaseInitializer = require('../../src/common/services/databaseInitializer');
 const Database = require('better-sqlite3');
 
-const dbPath = path.join(__dirname, '..', '..', 'data', 'pickleglass.db');
+const dbPath = databaseInitializer.getDatabasePath();
 const db = new Database(dbPath);
 
 db.pragma('journal_mode = WAL');

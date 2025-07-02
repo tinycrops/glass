@@ -7,7 +7,6 @@ export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    // Single user system - always redirect to personalize
     router.push('/personalize')
   }, [router])
 

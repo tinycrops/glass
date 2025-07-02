@@ -11,7 +11,7 @@ export default function PersonalizePage() {
   const [editorContent, setEditorContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isDirty, setIsDirty] = useState(false); // To track unsaved changes
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -21,7 +21,6 @@ export default function PersonalizePage() {
         setAllPresets(presetsData);
         
         if (presetsData.length > 0) {
-          // Select the first non-default preset if available, otherwise the first one
           const firstUserPreset = presetsData.find(p => p.is_default === 0) || presetsData[0];
           setSelectedPreset(firstUserPreset);
           setEditorContent(firstUserPreset.prompt);
@@ -53,7 +52,6 @@ export default function PersonalizePage() {
   const handleSave = async () => {
     if (!selectedPreset || saving || !isDirty) return;
     
-    // Default presets cannot be edited
     if (selectedPreset.is_default === 1) {
         alert("Default presets cannot be modified.");
         return;
@@ -66,7 +64,6 @@ export default function PersonalizePage() {
         prompt: editorContent 
       });
 
-      // Update local state to reflect changes
       setAllPresets(prev => 
         prev.map(p => 
           p.id === selectedPreset.id 
@@ -94,7 +91,6 @@ export default function PersonalizePage() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header - Always White Background */}
       <div className="bg-white border-b border-gray-100">
         <div className="px-8 pt-8 pb-6">
           <div className="flex justify-between items-start">
@@ -119,10 +115,8 @@ export default function PersonalizePage() {
         </div>
       </div>
 
-      {/* Toggle and Presets Section */}
       <div className={`transition-colors duration-300 ${showPresets ? 'bg-gray-50' : 'bg-white'}`}>
         <div className="px-8 py-6">
-          {/* Toggle Button */}
           <div className="mb-6">
             <button
               onClick={() => setShowPresets(!showPresets)}
@@ -135,7 +129,6 @@ export default function PersonalizePage() {
             </button>
           </div>
           
-          {/* Presets Grid */}
           {showPresets && (
             <div className="grid grid-cols-5 gap-4 mb-6">
               {allPresets.map((preset) => (
@@ -164,7 +157,6 @@ export default function PersonalizePage() {
         </div>
       </div>
 
-      {/* Editor Area */}
       <div className="flex-1 bg-white">
         <div className="h-full px-8 py-6">
           <textarea

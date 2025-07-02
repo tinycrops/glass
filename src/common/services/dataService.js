@@ -34,7 +34,6 @@ class DataService {
         }
     }
 
-    // This is called from the main process to sync with the renderer's auth state
     setCurrentUser(uid) {
         if (this.currentUserId !== uid) {
             console.log(`[DataService] Current user switched to: ${uid}`);
@@ -43,7 +42,6 @@ class DataService {
         }
     }
 
-    // Cache is now user-specific
     getCacheKey(operation, params = '') {
         return `${this.currentUserId}:${operation}:${params}`;
     }
@@ -66,7 +64,6 @@ class DataService {
         this.cache.clear();
     }
 
-    // 사용자 관리 (Firebase 로그인 시 호출됨)
     async findOrCreateUser(firebaseUser) {
         if (!this.sqliteClient) {
             console.log('[DataService] SQLite client not available, skipping user creation');
@@ -94,7 +91,6 @@ class DataService {
         }
     }
 
-    // API 키 관리
     async saveApiKey(apiKey) {
         if (!this.sqliteClient) {
             throw new Error("SQLite client not available.");
@@ -122,7 +118,6 @@ class DataService {
         }
     }
 
-    // 프리셋 관리
     async getUserPresets() {
         const cacheKey = this.getCacheKey('presets');
         const cached = this.getFromCache(cacheKey);
@@ -158,7 +153,6 @@ class DataService {
     }
 }
 
-// Singleton instance
 const dataService = new DataService();
 
 module.exports = dataService;

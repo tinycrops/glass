@@ -1,6 +1,5 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
 
-// 데이터 서비스 import (ESM)
 const dataService = (window.require && window.require('../common/services/dataService')) || undefined;
 
 export class CustomizeView extends LitElement {
@@ -23,15 +22,14 @@ export class CustomizeView extends LitElement {
             flex-direction: column;
             height: 100%;
             width: 100%;
-            background: rgba(20, 20, 20, 0.8); /* Increased opacity */
+            background: rgba(20, 20, 20, 0.8);
             border-radius: 12px;
             outline: 0.5px rgba(255, 255, 255, 0.5) solid;
             outline-offset: -1px;
-            /* backdrop-filter: blur(1px); */ /* Performance issue */
             box-sizing: border-box;
             position: relative;
-            overflow-y: auto; /* Changed from hidden to auto for scrolling */
-            padding: 12px 12px; /* Increased horizontal padding */
+            overflow-y: auto;
+            padding: 12px 12px;
         }
 
         .settings-container::-webkit-scrollbar {
@@ -75,11 +73,10 @@ export class CustomizeView extends LitElement {
         pointer-events: none;
         }
 
-        /* Header Section */
         .header-section {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start; /* Align items to the top */
+            align-items: flex-start;
             padding-bottom: 6px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
@@ -93,20 +90,20 @@ export class CustomizeView extends LitElement {
         }
 
         .app-title {
-            font-size: 13px; /* Reduced font size */
-            font-weight: 500; /* Reduced font weight */
+            font-size: 13px;
+            font-weight: 500;
             color: white;
-            margin: 0 0 4px 0; /* Added bottom margin */
+            margin: 0 0 4px 0;
         }
 
         .account-info {
-            font-size: 11px; /* Unified font size */
+            font-size: 11px;
             color: rgba(255, 255, 255, 0.7);
             margin: 0;
         }
 
         .invisibility-icon {
-            padding-top: 2px; /* Nudge down for vertical alignment with title */
+            padding-top: 2px;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -116,11 +113,10 @@ export class CustomizeView extends LitElement {
         }
 
         .invisibility-icon svg {
-            width: 16px; /* Adjusted size */
-            height: 16px; /* Adjusted size */
+            width: 16px;
+            height: 16px;
         }
 
-        /* Shortcuts Section */
         .shortcuts-section {
             display: flex;
             flex-direction: column;
@@ -136,11 +132,11 @@ export class CustomizeView extends LitElement {
             align-items: center;
             padding: 4px 0;
             color: white;
-            font-size: 11px; /* Unified font size */
+            font-size: 11px;
         }
 
         .shortcut-name {
-            font-weight: 300; /* Lowered from 500 */
+            font-weight: 300;
         }
 
         .shortcut-keys {
@@ -158,7 +154,7 @@ export class CustomizeView extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px; /* Increased from 10px */
+            font-size: 11px;
             font-weight: 500;
             color: rgba(255, 255, 255, 0.9);
         }
@@ -167,7 +163,7 @@ export class CustomizeView extends LitElement {
         .buttons-section {
             display: flex;
             flex-direction: column;
-            gap: 4px; /* Reduced from 8px */
+            gap: 4px;
             padding-top: 6px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
@@ -180,8 +176,8 @@ export class CustomizeView extends LitElement {
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 4px;
             color: white;
-            padding: 5px 10px; /* Reduced vertical padding */
-            font-size: 11px; /* Unified font size */
+            padding: 5px 10px;
+            font-size: 11px;
             font-weight: 400;
             cursor: pointer;
             transition: all 0.15s ease;
@@ -224,7 +220,6 @@ export class CustomizeView extends LitElement {
             gap: 4px;
         }
 
-        /* API Key Section */
         .api-key-section {
             padding: 6px 0;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -272,9 +267,7 @@ export class CustomizeView extends LitElement {
 
     constructor() {
         super();
-        console.log('[CustomizeView] constructor: Component instance created.');
 
-        // Initialize properties with defaults
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'school';
         this.selectedLanguage = localStorage.getItem('selectedLanguage') || 'en-US';
         this.selectedScreenshotInterval = localStorage.getItem('selectedScreenshotInterval') || '5000';
@@ -307,7 +300,6 @@ export class CustomizeView extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        console.log('[CustomizeView] connectedCallback: Component attached to DOM.');
         
         this.loadLayoutMode();
         this.loadUserPresets();
@@ -332,24 +324,19 @@ export class CustomizeView extends LitElement {
             }
         });
 
-        // IPC 이벤트 리스너
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             
             ipcRenderer.on('firebase-user-updated', (event, user) => {
-                console.log('[CustomizeView] Received firebase-user-updated:', user);
                 this.firebaseUser = user;
                 
-                // Firebase 로그아웃 시 API 키 상태도 리셋
                 if (!user) {
-                    console.log('[CustomizeView] Firebase user logged out, clearing API key state');
                     this.apiKey = null;
                 }
                 
                 this.requestUpdate();
             });
 
-            // user-changed 이벤트도 처리 (index.js에서 보내는 이벤트)
             ipcRenderer.on('user-changed', (event, firebaseUser) => {
                 console.log('[CustomizeView] Received user-changed:', firebaseUser);
                 this.firebaseUser = {
@@ -378,7 +365,6 @@ export class CustomizeView extends LitElement {
                 this.requestUpdate();
             });
 
-            // Get initial states
             this.loadInitialFirebaseUser();
             
             ipcRenderer.invoke('get-current-api-key').then(key => {
@@ -394,7 +380,6 @@ export class CustomizeView extends LitElement {
             window.removeEventListener('resize', this.resizeHandler);
         }
 
-        // IPC 이벤트 리스너 정리
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.removeAllListeners('firebase-user-updated');
@@ -406,10 +391,9 @@ export class CustomizeView extends LitElement {
     }
 
     updateScrollHeight() {
-        // 동적으로 최대 높이 조정
         const windowHeight = window.innerHeight;
-        const headerHeight = 60; // 헤더 높이 추정
-        const padding = 40; // 여백
+        const headerHeight = 60;
+        const padding = 40;
         const maxHeight = windowHeight - headerHeight - padding;
         
         this.style.maxHeight = `${maxHeight}px`;
@@ -432,7 +416,6 @@ export class CustomizeView extends LitElement {
             }));
         }
 
-        // Fallback 기본 목록
         return [
             { value: 'school', name: 'School', description: '' },
             { value: 'meetings', name: 'Meetings', description: '' },
@@ -517,48 +500,48 @@ export class CustomizeView extends LitElement {
     }
 
     getUserCustomPrompt() {
-        console.log('[CustomizeView] getUserCustomPrompt 호출');
+        console.log('[CustomizeView] getUserCustomPrompt called');
         console.log('[CustomizeView] userPresets:', this.userPresets);
         console.log('[CustomizeView] selectedProfile:', this.selectedProfile);
         
         if (!this.userPresets || this.userPresets.length === 0) {
-            console.log('[CustomizeView] 프리셋이 없음 - 로딩 메시지 반환');
-            return '개인화된 프롬프트를 불러오는 중... 웹에서 설정해주세요.';
+            console.log('[CustomizeView] No presets - returning loading message');
+            return 'Loading personalized prompt... Please set it in the web.';
         }
         
         let preset = this.userPresets.find(p => p.id === 'personalized' || p._id === 'personalized');
-        console.log('[CustomizeView] personalized 프리셋 찾기:', preset);
+        console.log('[CustomizeView] personalized preset:', preset);
         
         if (!preset) {
             preset = this.userPresets.find(p => p.id === this.selectedProfile || p._id === this.selectedProfile);
-            console.log('[CustomizeView] selectedProfile 프리셋 찾기:', preset);
+            console.log('[CustomizeView] selectedProfile preset:', preset);
         }
         
         if (!preset) {
             preset = this.userPresets[0];
-            console.log('[CustomizeView] 첫 번째 프리셋 사용:', preset);
+            console.log('[CustomizeView] Using first preset:', preset);
         }
         
-        const result = preset?.prompt || '개인화된 프롬프트가 설정되지 않았습니다.';
-        console.log('[CustomizeView] 최종 반환 프롬프트:', result);
+        const result = preset?.prompt || 'No personalized prompt set.';
+        console.log('[CustomizeView] Final returned prompt:', result);
         return result;
     }
 
     async loadUserPresets() {
         try {
-            console.log('[CustomizeView] 사용자 프리셋 로딩 시작...');
+            console.log('[CustomizeView] Loading user presets...');
             
             if (!dataService) {
-                console.log('[CustomizeView] dataService가 없음');
+                console.log('[CustomizeView] dataService is not available');
                 this.userPresets = [];
                 return;
             }
 
             this.userPresets = await dataService.getUserPresets();
-            console.log('[CustomizeView] 로드된 사용자 프리셋:', this.userPresets);
+            console.log('[CustomizeView] Loaded user presets:', this.userPresets);
             this.requestUpdate();
         } catch (error) {
-            console.error('[CustomizeView] 사용자 프리셋 로드 실패:', error);
+            console.error('[CustomizeView] Failed to load user presets:', error);
             this.userPresets = [];
             this.requestUpdate();
         }
@@ -596,7 +579,6 @@ export class CustomizeView extends LitElement {
 
     saveKeybinds() {
         localStorage.setItem('customKeybinds', JSON.stringify(this.keybinds));
-        // Send to main process to update global shortcuts
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.send('update-keybinds', this.keybinds);
@@ -695,16 +677,13 @@ export class CustomizeView extends LitElement {
         const modifiers = [];
         const keys = [];
 
-        // Check modifiers
         if (e.ctrlKey) modifiers.push('Ctrl');
         if (e.metaKey) modifiers.push('Cmd');
         if (e.altKey) modifiers.push('Alt');
         if (e.shiftKey) modifiers.push('Shift');
 
-        // Get the main key
         let mainKey = e.key;
 
-        // Handle special keys
         switch (e.code) {
             case 'ArrowUp':
                 mainKey = 'Up';
@@ -740,26 +719,20 @@ export class CustomizeView extends LitElement {
                 break;
         }
 
-        // Skip if only modifier keys are pressed
         if (['Control', 'Meta', 'Alt', 'Shift'].includes(e.key)) {
             return;
         }
 
-        // Construct keybind string
         const keybind = [...modifiers, mainKey].join('+');
 
-        // Get the action from the input's data attribute
         const action = e.target.dataset.action;
 
-        // Update the keybind
         this.handleKeybindChange(action, keybind);
 
-        // Update the input value
         e.target.value = keybind;
         e.target.blur();
     }
 
-    // Rate limiting methods
     loadRateLimitSettings() {
         const throttleTokens = localStorage.getItem('throttleTokens');
         const maxTokens = localStorage.getItem('maxTokens');
@@ -821,7 +794,6 @@ export class CustomizeView extends LitElement {
         this.googleSearchEnabled = e.target.checked;
         localStorage.setItem('googleSearchEnabled', this.googleSearchEnabled.toString());
 
-        // Notify main process if available
         if (window.require) {
             try {
                 const { ipcRenderer } = window.require('electron');
@@ -901,7 +873,6 @@ export class CustomizeView extends LitElement {
         this.contentProtection = e.target.checked;
         localStorage.setItem('contentProtection', this.contentProtection.toString());
 
-        // Notify main process if available
         if (window.require) {
             try {
                 const { ipcRenderer } = window.require('electron');
@@ -916,19 +887,19 @@ export class CustomizeView extends LitElement {
 
     async loadPresetTemplates() {
         try {
-            console.log('[CustomizeView] 프리셋 템플릿 로딩 시작...');
+            console.log('[CustomizeView] Loading preset templates...');
             
             if (!dataService) {
-                console.log('[CustomizeView] dataService가 없음');
+                console.log('[CustomizeView] dataService is not available');
                 this.presetTemplates = [];
                 return;
             }
 
             this.presetTemplates = await dataService.getPresetTemplates();
-            console.log('[CustomizeView] 로드된 프리셋 템플릿:', this.presetTemplates);
+            console.log('[CustomizeView] Loaded preset templates:', this.presetTemplates);
             this.requestUpdate();
         } catch (error) {
-            console.error('[CustomizeView] 프리셋 템플릿 로드 실패:', error);
+            console.error('[CustomizeView] Failed to load preset templates:', error);
             this.presetTemplates = [];
             this.requestUpdate();
         }
@@ -939,7 +910,6 @@ export class CustomizeView extends LitElement {
         console.log('[CustomizeView] render: Rendering component template.');
         return html`
             <div class="settings-container">
-                <!-- Header Section -->
                 <div class="header-section">
                     <div>
                         <h1 class="app-title">Pickle Glass</h1>
@@ -959,7 +929,6 @@ export class CustomizeView extends LitElement {
                     </div>
                 </div>
 
-                <!-- API Key Section -->
                 <div class="api-key-section" style="padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.1);">
                     <input 
                         type="password" 
@@ -974,7 +943,6 @@ export class CustomizeView extends LitElement {
                     </button>
                 </div>
 
-                <!-- Shortcuts Section -->
                 <div class="shortcuts-section">
                     ${this.getMainShortcuts().map(shortcut => html`
                         <div class="shortcut-item">
@@ -1027,7 +995,6 @@ export class CustomizeView extends LitElement {
         `;
     }
 
-    // 새로운 헬퍼 메서드들
     getMainShortcuts() {
         return [
             { name: 'Show / Hide', key: '\\' },
@@ -1036,7 +1003,6 @@ export class CustomizeView extends LitElement {
         ];
     }
 
-    // 버튼 핸들러들
     handleMoveLeft() {
         console.log('Move Left clicked');
         if (window.require) {
@@ -1055,7 +1021,6 @@ export class CustomizeView extends LitElement {
 
     async handlePersonalize() {
         console.log('Personalize clicked');
-        // 개인화 설정 페이지로 이동
         if (window.require) {
             const { ipcRenderer, shell } = window.require('electron');
             try {
@@ -1063,7 +1028,6 @@ export class CustomizeView extends LitElement {
                 shell.openExternal(`${webUrl}/personalize`);
             } catch (error) {
                 console.error('Failed to get web URL or open external link:', error);
-                // Fallback to default url
                 shell.openExternal('http://localhost:3000/personalize');
             }
         }
@@ -1105,7 +1069,6 @@ export class CustomizeView extends LitElement {
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             await ipcRenderer.invoke('remove-api-key');
-            // The window will be hidden by the main process, but we update state just in case.
             this.requestUpdate();
         }
     }
@@ -1137,7 +1100,6 @@ export class CustomizeView extends LitElement {
         try {
             console.log('[CustomizeView] Loading initial Firebase user...');
             
-            // 여러 번 시도
             for (let i = 0; i < 3; i++) {
                 const user = await ipcRenderer.invoke('get-current-firebase-user');
                 console.log(`[CustomizeView] Attempt ${i + 1} - Firebase user:`, user);
@@ -1149,7 +1111,6 @@ export class CustomizeView extends LitElement {
                     return;
                 }
                 
-                // 100ms 대기 후 재시도
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
             
@@ -1165,18 +1126,17 @@ export class CustomizeView extends LitElement {
     }
 
     getApiKeyFromStorage() {
-        // IPC를 통해 API 키를 가져오기 시도
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.invoke('get-current-api-key').then(key => {
                 this.apiKey = key;
                 this.requestUpdate();
             }).catch(error => {
-                console.log('[CustomizeView] API 키 가져오기 실패:', error);
+                console.log('[CustomizeView] Failed to get API key:', error);
                 this.apiKey = null;
             });
         }
-        return null; // 초기값은 null, 비동기로 업데이트됨
+        return null;
     }
 }
 

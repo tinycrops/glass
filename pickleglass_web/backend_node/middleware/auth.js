@@ -6,7 +6,6 @@ function identifyUser(req, res, next) {
     if (userId) {
         req.uid = userId;
     } else {
-        // Fallback to default user for local mode if no user ID is provided
         req.uid = 'default_user';
     }
     

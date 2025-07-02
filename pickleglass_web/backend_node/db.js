@@ -1,11 +1,9 @@
 const path = require('path');
 const Database = require('better-sqlite3');
 
-// DB 위치: <repoRoot>/data/pickleglass.db  (기존 FastAPI와 동일)
 const dbPath = path.join(__dirname, '..', '..', 'data', 'pickleglass.db');
 const db = new Database(dbPath);
 
-// ---------- 스키마 & 기본 데이터 ----------
 db.pragma('journal_mode = WAL');
 
 db.exec(`
@@ -95,7 +93,6 @@ VALUES (@id, 'default_user', @title, @prompt, @is_default, strftime('%s','now'))
 `);
 db.transaction(() => defaultPresets.forEach(([id, title, prompt, is_default]) => stmt.run({ id, title, prompt, is_default })))();
 
-// Initialize Basic_User if not exists
 const defaultUserStmt = db.prepare(`
 INSERT OR IGNORE INTO users (uid, display_name, email, created_at)
 VALUES ('default_user', 'Default User', 'contact@pickle.com', strftime('%s','now'));

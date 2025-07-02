@@ -16,7 +16,6 @@ import {
 } from 'firebase/firestore';
 import { firestore } from './firebase';
 
-// 타입 정의
 export interface FirestoreUserProfile {
   displayName: string;
   email: string;
@@ -64,7 +63,6 @@ export interface FirestorePromptPreset {
   createdAt: Timestamp;
 }
 
-// 사용자 관리
 export class FirestoreUserService {
   static async createUser(uid: string, profile: Omit<FirestoreUserProfile, 'createdAt'>) {
     const userRef = doc(firestore, 'users', uid);
@@ -86,17 +84,14 @@ export class FirestoreUserService {
   }
 
   static async deleteUser(uid: string) {
-    // 사용자와 관련된 모든 데이터 삭제
     const batch = writeBatch(firestore);
     
-    // 세션들 삭제
     const sessionsRef = collection(firestore, 'users', uid, 'sessions');
     const sessionsSnap = await getDocs(sessionsRef);
     
     for (const sessionDoc of sessionsSnap.docs) {
       const sessionId = sessionDoc.id;
       
-      // 각 세션의 서브컬렉션들 삭제
       const transcriptsRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'transcripts');
       const transcriptsSnap = await getDocs(transcriptsRef);
       transcriptsSnap.docs.forEach(doc => batch.delete(doc.ref));
@@ -108,16 +103,13 @@ export class FirestoreUserService {
       const summaryRef = doc(firestore, 'users', uid, 'sessions', sessionId, 'summary', 'data');
       batch.delete(summaryRef);
       
-      // 세션 자체 삭제
       batch.delete(sessionDoc.ref);
     }
     
-    // 프롬프트 프리셋들 삭제
     const presetsRef = collection(firestore, 'users', uid, 'promptPresets');
     const presetsSnap = await getDocs(presetsRef);
     presetsSnap.docs.forEach(doc => batch.delete(doc.ref));
     
-    // 사용자 문서 삭제
     const userRef = doc(firestore, 'users', uid);
     batch.delete(userRef);
     
@@ -125,7 +117,6 @@ export class FirestoreUserService {
   }
 }
 
-// 세션 관리
 export class FirestoreSessionService {
   static async createSession(uid: string, session: Omit<FirestoreSession, 'startedAt'>): Promise<string> {
     const sessionsRef = collection(firestore, 'users', uid, 'sessions');
@@ -161,7 +152,6 @@ export class FirestoreSessionService {
   static async deleteSession(uid: string, sessionId: string) {
     const batch = writeBatch(firestore);
     
-    // 서브컬렉션들 삭제
     const transcriptsRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'transcripts');
     const transcriptsSnap = await getDocs(transcriptsRef);
     transcriptsSnap.docs.forEach(doc => batch.delete(doc.ref));
@@ -173,7 +163,6 @@ export class FirestoreSessionService {
     const summaryRef = doc(firestore, 'users', uid, 'sessions', sessionId, 'summary', 'data');
     batch.delete(summaryRef);
     
-    // 세션 자체 삭제
     const sessionRef = doc(firestore, 'users', uid, 'sessions', sessionId);
     batch.delete(sessionRef);
     
@@ -181,7 +170,6 @@ export class FirestoreSessionService {
   }
 }
 
-// 트랜스크립트 관리
 export class FirestoreTranscriptService {
   static async addTranscript(uid: string, sessionId: string, transcript: Omit<FirestoreTranscript, 'createdAt'>): Promise<string> {
     const transcriptsRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'transcripts');
@@ -204,7 +192,6 @@ export class FirestoreTranscriptService {
   }
 }
 
-// AI 메시지 관리
 export class FirestoreAiMessageService {
   static async addAiMessage(uid: string, sessionId: string, message: Omit<FirestoreAiMessage, 'createdAt'>): Promise<string> {
     const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'aiMessages');
@@ -227,7 +214,6 @@ export class FirestoreAiMessageService {
   }
 }
 
-// 요약 관리
 export class FirestoreSummaryService {
   static async setSummary(uid: string, sessionId: string, summary: FirestoreSummary) {
     const summaryRef = doc(firestore, 'users', uid, 'sessions', sessionId, 'summary', 'data');
@@ -241,7 +227,6 @@ export class FirestoreSummaryService {
   }
 }
 
-// 프롬프트 프리셋 관리
 export class FirestorePromptPresetService {
   static async createPreset(uid: string, preset: Omit<FirestorePromptPreset, 'createdAt'>): Promise<string> {
     const presetsRef = collection(firestore, 'users', uid, 'promptPresets');

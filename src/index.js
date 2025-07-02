@@ -1,13 +1,8 @@
 try {
     const reloader = require('electron-reloader');
     reloader(module, {
-        // 추가 옵션: 특정 파일/폴더 감시 또는 무시
-        // ignore: ['path/to/ignore', /regex/],
-        // watch: ['path/to/watch']
     });
 } catch (err) {
-    // electron-reloader가 devDependency이므로, 프로덕션에서는 에러가 날 수 있습니다.
-    // 여기서 에러를 무시합니다.
 }
 
 require('dotenv').config();
@@ -30,12 +25,8 @@ let WEB_PORT = 3000;
 
 const openaiSessionRef = { current: null };
 
-console.log('>>> [index.js] 모듈 로딩 완료');
-
 function createMainWindows() {
-    console.log('>>> [index.js] createMainWindows 함수 호출됨');
     createWindows();
-    console.log('>>> [index.js] createWindows 함수 실행 완료');
 
     const { windowPool } = require('./electron/windowManager');
     deeplink.mainWindow = windowPool.get('header');
@@ -55,17 +46,12 @@ const deeplink = new Deeplink({
   });
 
 app.whenReady().then(async () => {
-    console.log('>>> [index.js] app is ready');
-
-    // 단일 인스턴스 잠금. 앱의 다른 인스턴스가 실행되는 것을 방지합니다.
     const gotTheLock = app.requestSingleInstanceLock();
     if (!gotTheLock) {
         app.quit();
         return;
     } else {
         app.on('second-instance', (event, commandLine, workingDirectory) => {
-            // 다른 인스턴스가 실행되려고 할 때, 기존 창을 포커스합니다.
-            // URL 처리는 deeplink.on('received')에서 처리됩니다.
             const { windowPool } = require('./electron/windowManager');
             if (windowPool) {
                 const header = windowPool.get('header');
@@ -85,8 +71,6 @@ app.whenReady().then(async () => {
         });
     }
 
-    // 1. 데이터베이스 초기화 (웹 스택 시작 전에)
-    console.log('>>> [index.js] Initializing database...');
     const dbInitSuccess = await databaseInitializer.initialize();
     if (!dbInitSuccess) {
         console.error('>>> [index.js] Database initialization failed - some features may not work');
@@ -94,16 +78,13 @@ app.whenReady().then(async () => {
         console.log('>>> [index.js] Database initialized successfully');
     }
 
-    // 2. 웹 스택 시작
-    WEB_PORT = await startWebStack();      // ← 핵심 한 줄
+    WEB_PORT = await startWebStack();
     console.log('Web front-end listening on', WEB_PORT);
     
     setupLiveSummaryIpcHandlers(openaiSessionRef);
-    console.log('>>> [index.js] setupLiveSummaryIpcHandlers 설정 완료');
     setupGeneralIpcHandlers();
 
     createMainWindows();
-    console.log('>>> [index.js] 모든 핸들러 설정 완료');
 });
 
 app.on('window-all-closed', () => {
@@ -115,7 +96,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
     stopMacOSAudioCapture();
-    // 데이터베이스 연결 정리
     databaseInitializer.close();
 });
 
@@ -135,11 +115,9 @@ function setupGeneralIpcHandlers() {
         }
     });
 
-    // API Key IPC Handler
     ipcMain.handle('save-api-key', async (event, apiKey) => {
         try {
             await dataService.saveApiKey(apiKey);
-            // Notify all windows of the change
             BrowserWindow.getAllWindows().forEach(win => {
                 win.webContents.send('api-key-updated');
             });
@@ -154,18 +132,15 @@ function setupGeneralIpcHandlers() {
         return await dataService.checkApiKey();
     });
 
-    // Preset IPC Handler
     ipcMain.handle('get-user-presets', async () => {
         return await dataService.getUserPresets();
     });
 
-    // 웹뷰에서 사용자 로그인/모드 변경 시 호출됨
     ipcMain.on('set-current-user', (event, uid) => {
         console.log(`[IPC] set-current-user: ${uid}`);
         dataService.setCurrentUser(uid);
     });
 
-    // Firebase 인증 시작 핸들러 (브라우저에서 로그인)
     ipcMain.handle('start-firebase-auth', async () => {
         try {
             const authUrl = `http://localhost:${WEB_PORT}/login?mode=electron`;
@@ -178,15 +153,12 @@ function setupGeneralIpcHandlers() {
         }
     });
 
-    // 웹뷰에서 Firebase 로그인 성공 시 호출됨
     ipcMain.on('firebase-auth-success', async (event, firebaseUser) => {
         console.log('[IPC] firebase-auth-success:', firebaseUser.uid);
         try {
-            // dataService를 통해 Firestore 사용자 정보와 동기화
             await dataService.findOrCreateUser(firebaseUser);
             dataService.setCurrentUser(firebaseUser.uid);
             
-            // 다른 창에도 사용자 변경 알림
             BrowserWindow.getAllWindows().forEach(win => {
                 if (win !== event.sender.getOwnerBrowserWindow()) {
                     win.webContents.send('user-changed', firebaseUser);
@@ -197,22 +169,18 @@ function setupGeneralIpcHandlers() {
         }
     });
 
-    // 동적 API URL 제공
     ipcMain.handle('get-api-url', () => {
         return process.env.pickleglass_API_URL || 'http://localhost:9001';
     });
 
-    // 동적 WEB URL 제공
     ipcMain.handle('get-web-url', () => {
         return process.env.pickleglass_WEB_URL || 'http://localhost:3000';
     });
 
-    // 동기 방식으로도 API URL 제공
     ipcMain.on('get-api-url-sync', (event) => {
         event.returnValue = process.env.pickleglass_API_URL || 'http://localhost:9001';
     });
 
-    // 데이터베이스 관련 IPC 핸들러
     ipcMain.handle('get-database-status', async () => {
         return await databaseInitializer.getStatus();
     });
@@ -221,10 +189,8 @@ function setupGeneralIpcHandlers() {
         return await databaseInitializer.reset();
     });
 
-    // This handler returns the current user based on the DataService's state
     ipcMain.handle('get-current-user', async () => {
         try {
-            // DataService always knows the current user (local or Firebase)
             const user = await dataService.sqliteClient.getUser(dataService.currentUserId);
             if (user) {
             return {
@@ -236,7 +202,6 @@ function setupGeneralIpcHandlers() {
             throw new Error('User not found in DataService');
         } catch (error) {
             console.error('Failed to get current user via DataService:', error);
-            // Fallback to a default structure
             return {
                 id: 'default_user',
                 name: 'Default User',
@@ -245,7 +210,6 @@ function setupGeneralIpcHandlers() {
         }
     });
 
-    // Custom drag handlers are now in windowManager.js
 }
 
 async function handleCustomUrl(url) {
@@ -267,14 +231,12 @@ async function handleCustomUrl(url) {
                 handlePersonalizeFromUrl(params);
                 break;
             default:
-                // 기본 페이지 이동 처리
                 const { windowPool } = require('./electron/windowManager');
                 const header = windowPool.get('header');
                 if (header) {
                     if (header.isMinimized()) header.restore();
                     header.focus();
                     
-                    // 웹뷰 URL 변경 요청
                     const targetUrl = `http://localhost:${WEB_PORT}/${action}`;
                     console.log(`[Custom URL] Navigating webview to: ${targetUrl}`);
                     header.webContents.loadURL(targetUrl);
@@ -297,19 +259,16 @@ async function handleFirebaseAuthCallback(params) {
     console.log('[Auth] Processing Firebase auth callback with data:', { uid, email, displayName });
 
     try {
-        // 사용자 데이터 준비
         const firebaseUser = {
             uid: uid,
             email: email || 'no-email@example.com',
             displayName: displayName || 'User',
-            idToken: idToken  // Token received from deeplink
+            idToken: idToken
         };
 
-        // dataService를 통해 사용자 정보 동기화
         await dataService.findOrCreateUser(firebaseUser);
         dataService.setCurrentUser(uid);
 
-        // 🔑 Firebase 인증 성공 시 바로 virtual key 발급
         if (firebaseUser.email && firebaseUser.idToken) {
             try {
                 const { getVirtualKeyByEmail, setApiKey } = require('./electron/windowManager');
@@ -317,15 +276,12 @@ async function handleFirebaseAuthCallback(params) {
                 const vKey = await getVirtualKeyByEmail(firebaseUser.email, firebaseUser.idToken);
                 console.log('[Auth] Virtual key fetched successfully');
                 
-                // Save API key
                 await setApiKey(vKey);
                 console.log('[Auth] Virtual key saved successfully');
                 
-                // Update Firebase user state
                 const { setCurrentFirebaseUser } = require('./electron/windowManager');
                 setCurrentFirebaseUser(firebaseUser);
                 
-                // Notify all windows
                 const { windowPool } = require('./electron/windowManager');
                 windowPool.forEach(win => {
                     if (win && !win.isDestroyed()) {
@@ -338,7 +294,6 @@ async function handleFirebaseAuthCallback(params) {
             }
         }
 
-        // 헤더 창에 로그인 성공 신호 전송
         const { windowPool } = require('./electron/windowManager');
         const header = windowPool.get('header');
         if (header) {
@@ -348,7 +303,6 @@ async function handleFirebaseAuthCallback(params) {
             console.log('[Auth] Sending firebase-auth-success to header window');
             header.webContents.send('firebase-auth-success', firebaseUser);
             
-            // AppHeader로 전환하기 위한 로그인 성공 신호
             header.webContents.send('login-successful', { 
                 customToken: null, 
                 user: firebaseUser,
@@ -358,7 +312,6 @@ async function handleFirebaseAuthCallback(params) {
             console.error('[Auth] Header window not found');
         }
 
-        // 모든 창에 사용자 변경 알림
         BrowserWindow.getAllWindows().forEach(win => {
             if (win !== header) {
                 win.webContents.send('user-changed', firebaseUser);
@@ -370,7 +323,6 @@ async function handleFirebaseAuthCallback(params) {
     } catch (error) {
         console.error('[Auth] Error during Firebase auth callback:', error);
         
-        // 실패 시에도 헤더 UI 업데이트
         const { windowPool } = require('./electron/windowManager');
         const header = windowPool.get('header');
         if (header) {
@@ -385,7 +337,6 @@ async function handleFirebaseAuthCallback(params) {
 function handlePersonalizeFromUrl(params) {
     console.log('[Custom URL] Personalize params:', params);
     
-    // 개인화/설정 페이지로 이동
     const { windowPool } = require('./electron/windowManager');
     const header = windowPool.get('header');
     
@@ -393,12 +344,10 @@ function handlePersonalizeFromUrl(params) {
         if (header.isMinimized()) header.restore();
         header.focus();
         
-        // 설정 페이지로 이동
         const personalizeUrl = `http://localhost:${WEB_PORT}/settings`;
         console.log(`[Custom URL] Navigating to personalize page: ${personalizeUrl}`);
         header.webContents.loadURL(personalizeUrl);
         
-        // 개인화 모드 활성화 신호 전송
         BrowserWindow.getAllWindows().forEach(win => {
             win.webContents.send('enter-personalize-mode', {
                 message: 'Personalization mode activated',
@@ -411,12 +360,10 @@ function handlePersonalizeFromUrl(params) {
 }
 
 
-////////// WEB + API 서버 시작 //////////
 async function startWebStack() {
   console.log('NODE_ENV =', process.env.NODE_ENV); 
   const isDev = !app.isPackaged;
 
-  // 1. 먼저 포트를 할당받습니다 (서버 시작 없이)
   const getAvailablePort = () => {
     return new Promise((resolve, reject) => {
       const server = require('net').createServer();
@@ -433,7 +380,6 @@ async function startWebStack() {
 
   console.log(`🔧 Allocated ports: API=${apiPort}, Frontend=${frontendPort}`);
 
-  // 2. 환경변수 설정 (백엔드 모듈 로딩 전에!)
   process.env.pickleglass_API_PORT = apiPort.toString();
   process.env.pickleglass_API_URL = `http://localhost:${apiPort}`;
   process.env.pickleglass_WEB_PORT = frontendPort.toString();
@@ -444,11 +390,9 @@ async function startWebStack() {
     pickleglass_WEB_URL: process.env.pickleglass_WEB_URL
   });
 
-  // 3. 이제 백엔드 모듈을 로드합니다 (환경변수가 설정된 후!)
   const createBackendApp = require('../pickleglass_web/backend_node');
-  const nodeApi = createBackendApp(); // 함수 호출로 앱 생성
+  const nodeApi = createBackendApp();
 
-  // 4. 프론트엔드 서버 시작
   const staticDir = path.join(__dirname, '..', 'pickleglass_web', 'out');
   const fs = require('fs');
 
@@ -462,7 +406,6 @@ async function startWebStack() {
     return;
   }
 
-  // 런타임 설정 파일 생성 (프론트엔드에서 로드할 수 있도록)
   const runtimeConfig = {
     API_URL: `http://localhost:${apiPort}`,
     WEB_URL: `http://localhost:${frontendPort}`,
@@ -474,7 +417,6 @@ async function startWebStack() {
   console.log(`📝 Runtime config created: ${configPath}`);
   console.log(`📝 Runtime config content:`, runtimeConfig);
   
-  // 파일 생성 확인
   if (fs.existsSync(configPath)) {
     console.log(`✅ Runtime config file verified: ${configPath}`);
   } else {
@@ -483,7 +425,6 @@ async function startWebStack() {
 
   const frontSrv = express();
   
-  // HTML 파일을 확장자 없이 접근할 수 있도록 미들웨어 추가
   frontSrv.use((req, res, next) => {
     if (req.path.indexOf('.') === -1 && req.path !== '/') {
       const htmlPath = path.join(staticDir, req.path + '.html');
@@ -504,9 +445,8 @@ async function startWebStack() {
 
   console.log(`✅ Frontend server started on http://localhost:${frontendPort}`);
 
-  // 5. API 서버 시작 (CORS는 이미 백엔드 모듈에서 설정됨)
   const apiSrv = express();
-  apiSrv.use(nodeApi); // 백엔드 라우터 마운트
+  apiSrv.use(nodeApi);
 
   const apiServer = await new Promise((resolve, reject) => {
     const server = apiSrv.listen(apiPort, '127.0.0.1', () => resolve(server));

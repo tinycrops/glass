@@ -14,7 +14,6 @@ import {
 } from '@/utils/api'
 import { useRouter } from 'next/navigation'
 
-// Electron IPC
 declare global {
   interface Window {
     ipcRenderer?: any;
@@ -25,7 +24,6 @@ type Tab = 'profile' | 'privacy' | 'billing'
 type BillingCycle = 'monthly' | 'annually'
 
 export default function SettingsPage() {
-  // 새로운 useAuth 사용
   const { user: userInfo, isLoading, mode } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
@@ -60,7 +58,6 @@ export default function SettingsPage() {
     }
     fetchProfileData()
 
-    // Listen for updates from the Electron main process
     if (window.ipcRenderer) {
       window.ipcRenderer.on('api-key-updated', () => {
         console.log('Received api-key-updated event from main process.');
@@ -105,13 +102,11 @@ export default function SettingsPage() {
       await saveApiKey(apiKeyInput)
       setHasApiKey(true)
       setApiKeyInput('')
-      // Notify Electron main process if running inside Electron
       if (window.ipcRenderer) {
         window.ipcRenderer.invoke('save-api-key', apiKeyInput);
       }
     } catch (error) {
       console.error("Failed to save API key:", error)
-      // Optionally, show an error message
     } finally {
       setIsSaving(false)
     }
@@ -123,10 +118,8 @@ export default function SettingsPage() {
     try {
         await updateUserProfile({ displayName: displayNameInput });
         setProfile(prev => prev ? { ...prev, display_name: displayNameInput } : null);
-        // Optionally, show a success toast message here
     } catch (error) {
         console.error("Failed to update display name:", error);
-        // Optionally, show an error toast message here
     } finally {
         setIsSaving(false);
     }
@@ -143,7 +136,6 @@ export default function SettingsPage() {
         router.push('/login');
       } catch (error) {
         console.error("Failed to delete account:", error)
-        // Optionally, show an error message
       }
     }
   }
@@ -158,7 +150,6 @@ export default function SettingsPage() {
 
   const renderBillingContent = () => (
     <div className="space-y-8">
-      {/* 현재 모드 표시 */}
       <div className={`p-4 rounded-lg border ${isFirebaseMode ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
         <div className="flex items-center gap-2 mb-2">
           {isFirebaseMode ? (
@@ -178,7 +169,6 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      {/* Billing Toggle */}
       <div className="flex gap-2">
         <button
           onClick={() => setBillingCycle('monthly')}
@@ -202,9 +192,7 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* Pricing Cards */}
       <div className="grid grid-cols-3 gap-6">
-        {/* Free Plan */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <div className="mb-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Free</h3>
@@ -249,7 +237,6 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {/* Pro Plan - Coming Soon */}
         <div className="bg-white border border-gray-200 rounded-lg p-6 opacity-60">
           <div className="mb-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Pro</h3>
@@ -290,7 +277,6 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {/* Enterprise Plan - Coming Soon */}
         <div className="bg-gray-800 text-white rounded-lg p-6 opacity-60">
           <div className="mb-6">
             <h3 className="text-xl font-semibold mb-2">Enterprise</h3>
@@ -338,7 +324,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Free Emphasis Banner */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-6">
         <div className="flex items-center gap-3">
           <Check className="h-6 w-6 text-green-600" />
@@ -363,7 +348,6 @@ export default function SettingsPage() {
       case 'profile':
         return (
           <div className="space-y-6">
-            {/* 현재 모드 표시 */}
             <div className={`p-4 rounded-lg border ${isFirebaseMode ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -395,7 +379,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Display Name Section */}
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-1">Display Name</h3>
               <p className="text-sm text-gray-600 mb-4">Enter your full name or a display name you're comfortable using.</p>
@@ -421,7 +404,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* API Key Management Section - Local mode only */}
             {!isFirebaseMode && (
               <div className="bg-white border border-gray-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">API Key</h3>
@@ -462,7 +444,6 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Account Deletion Section - Always show in Firebase mode, only when no API key in local mode */}
             {(isFirebaseMode || (!isFirebaseMode && !hasApiKey)) && (
                <div className="bg-white border border-red-300 rounded-lg p-6">
                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Delete Account</h3>
@@ -499,7 +480,6 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Personal Settings</h1>
         </div>
         
-        {/* Tabs */}
         <div className="mb-8">
           <nav className="flex space-x-10">
             {tabs.map((tab) => (
@@ -519,7 +499,6 @@ export default function SettingsPage() {
           </nav>
         </div>
 
-        {/* Tab Content */}
         {renderTabContent()}
       </div>
     </div>

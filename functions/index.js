@@ -12,8 +12,6 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const cors = require("cors")({origin: true});
 
-// Firebase Admin SDK 초기화
-// Firebase Functions 환경에서는 별도의 설정 파일 없이 초기화 가능
 admin.initializeApp();
 
 // Create and deploy your first functions
@@ -27,22 +25,20 @@ admin.initializeApp();
 /**
  * @name pickleGlassAuthCallback
  * @description
- * 클라이언트(Electron)로부터 Firebase ID 토큰을 받아 검증합니다.
- * 성공 시, 사용자 정보와 함께 성공 응답을 반환합니다.
- * 실패 시, 에러 메시지를 반환합니다.
+ * Validate Firebase ID token and return custom token.
+ * On success, return success response with user information.
+ * On failure, return error message.
  *
- * @param {object} request - HTTPS 요청 객체. body에 { token: "..." } 포함.
- * @param {object} response - HTTPS 응답 객체.
+ * @param {object} request - HTTPS request object. Contains { token: "..." } in body.
+ * @param {object} response - HTTPS response object.
  */
 const authCallbackHandler = (request, response) => {
-  // CORS 프리플라이트 요청을 처리합니다.
   cors(request, response, async () => {
     try {
       logger.info("pickleGlassAuthCallback function triggered", {
         body: request.body,
       });
 
-      // 1. 요청 방식이 POST인지, body가 있는지 확인
       if (request.method !== "POST") {
         response.status(405).send("Method Not Allowed");
         return;
@@ -59,16 +55,13 @@ const authCallbackHandler = (request, response) => {
       const idToken = request.body.token;
       logger.info("Received token:", idToken.substring(0, 20) + "...");
 
-      // 2. Firebase Admin SDK를 사용하여 토큰 검증
       const decodedToken = await admin.auth().verifyIdToken(idToken);
       const uid = decodedToken.uid;
 
       logger.info("Successfully verified token for UID:", uid);
 
-      // 3. (NEW) 커스텀 토큰 생성
       const customToken = await admin.auth().createCustomToken(uid);
-
-      // 4. 성공 응답 반환 (커스텀 토큰 포함)
+      
       response.status(200).send({
         success: true,
         message: "Authentication successful.",

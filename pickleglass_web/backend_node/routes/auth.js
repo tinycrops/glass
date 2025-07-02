@@ -2,8 +2,6 @@ const express = require('express');
 const db = require('../db');
 const router = express.Router();
 
-// Single user system - authentication not needed
-// Default user is always available
 router.get('/status', (req, res) => {
     const user = db.prepare('SELECT uid, display_name FROM users WHERE uid = ?').get('default_user');
     if (!user) {

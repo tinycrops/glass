@@ -837,22 +837,57 @@ export class AssistantView extends LitElement {
         const container = this.shadowRoot.querySelector('.transcription-container');
         this._shouldScrollAfterUpdate = container ? (container.scrollTop + container.clientHeight >= container.scrollHeight - 10) : false;
 
-        const lastMessage = this.sttMessages.length > 0 ? this.sttMessages[this.sttMessages.length - 1] : null;
-
-        // 마지막 메시지가 있고, 같은 화자이며, 아직 진행 중(partial)이라면 내용을 교체
-        if (lastMessage && lastMessage.speaker === speaker && lastMessage.isPartial) {
-            const updatedMessage = { ...lastMessage, text: text, isFinal: isFinal, isPartial: isPartial };
-            this.sttMessages = [...this.sttMessages.slice(0, -1), updatedMessage];
-        } else {
-            // 그 외의 경우 (첫 메시지, 다른 화자, 이전 메시지 완료 등) 새 말풍선을 추가
-            this.sttMessages = [...this.sttMessages, { 
-                id: this.messageIdCounter++, 
-                speaker, 
-                text, 
-                isFinal,
-                isPartial
-            }];
-        }
+                const findLastPartialIdx = (spk) => {
+                        for (let i = this.sttMessages.length - 1; i >= 0; i--) {
+                            const m = this.sttMessages[i];
+                            if (m.speaker === spk && m.isPartial) return i;
+                       }
+                        return -1;
+                    };
+            
+                    const newMessages = [...this.sttMessages];
+                    const targetIdx = findLastPartialIdx(speaker);
+            
+                if (isPartial) {
+                        // 진행-중 델타 → 있으면 덮어쓰기, 없으면 새 버블
+                        if (targetIdx !== -1) {
+                            newMessages[targetIdx] = {
+                                ...newMessages[targetIdx],
+                                text,
+                                isPartial: true,
+                                isFinal: false,
+                            };
+                        } else {
+                            newMessages.push({
+                                id: this.messageIdCounter++,
+                                speaker,
+                                text,
+                                isPartial: true,
+                                isFinal: false,
+                            });
+                        }
+                    } else if (isFinal) {
+                        // 완료 → 기존 partial을 final 로 전환, 없으면 새 버블
+                        if (targetIdx !== -1) {
+                            newMessages[targetIdx] = {
+                                ...newMessages[targetIdx],
+                                text,
+                                isPartial: false,
+                                isFinal: true,
+                            };
+                        } else {
+                            newMessages.push({
+                                id: this.messageIdCounter++,
+                                speaker,
+                                text,
+                                isPartial: false,
+                                isFinal: true,
+                            });
+                        }
+                    }
+            
+                    this.sttMessages = newMessages;
+                    // ----------  새 로직 끝 ----------
     }
 
     // scrollToTranscriptionBottom 메서드는 수정할 필요 없습니다.

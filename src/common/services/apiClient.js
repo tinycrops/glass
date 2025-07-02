@@ -15,10 +15,10 @@ class APIClient {
         this.client.interceptors.response.use(
             (response) => response,
             (error) => {
-                console.error('API 요청 실패:', error.message);
+                console.error('API request failed:', error.message);
                 if (error.response) {
-                    console.error('응답 상태:', error.response.status);
-                    console.error('응답 데이터:', error.response.data);
+                    console.error('response status:', error.response.status);
+                    console.error('response data:', error.response.data);
                 }
                 return Promise.reject(error);
             }
@@ -28,10 +28,10 @@ class APIClient {
     async initialize() {
         try {
             const response = await this.client.get('/api/auth/status');
-            console.log('[APIClient] 기본 사용자 상태 확인 완료:', response.data);
+            console.log('[APIClient] checked default user status:', response.data);
             return true;
         } catch (error) {
-            console.error('[APIClient] 초기화 실패:', error);
+            console.error('[APIClient] failed to initialize:', error);
             return false;
         }
     }
@@ -50,7 +50,7 @@ class APIClient {
             const response = await this.client.post('/api/user/api-key', { apiKey });
             return response.data;
         } catch (error) {
-            console.error('API 키 저장 실패:', error);
+            console.error('failed to save api key:', error);
             throw error;
         }
     }
@@ -60,7 +60,7 @@ class APIClient {
             const response = await this.client.get('/api/user/api-key');
             return response.data;
         } catch (error) {
-            console.error('API 키 확인 실패:', error);
+            console.error('failed to check api key:', error);
             return { hasApiKey: false };
         }
     }
@@ -71,7 +71,7 @@ class APIClient {
             const response = await this.client.get(`/api/user/batch?include=${includeParam}`);
             return response.data;
         } catch (error) {
-            console.error('배치 사용자 데이터 조회 실패:', error);
+            console.error('failed to get user batch data:', error);
             return null;
         }
     }
@@ -81,7 +81,7 @@ class APIClient {
             const response = await this.client.get('/api/user/context');
             return response.data.context;
         } catch (error) {
-            console.error('사용자 컨텍스트 조회 실패:', error);
+            console.error('fail to get user context:', error);
             return null;
         }
     }
@@ -91,7 +91,7 @@ class APIClient {
             const response = await this.client.get('/api/user/profile');
             return response.data;
         } catch (error) {
-            console.error('사용자 프로필 조회 실패:', error);
+            console.error('failed to get user profile:', error);
             return null;
         }
     }
@@ -101,7 +101,7 @@ class APIClient {
             const response = await this.client.get('/api/user/presets');
             return response.data;
         } catch (error) {
-            console.error('사용자 프리셋 조회 실패:', error);
+            console.error('failed to get user presets:', error);
             return [];
         }
     }
@@ -111,7 +111,7 @@ class APIClient {
             const response = await this.client.post('/api/user/context', context);
             return response.data;
         } catch (error) {
-            console.error('사용자 컨텍스트 업데이트 실패:', error);
+            console.error('failed to update user context:', error);
             throw error;
         }
     }
@@ -121,7 +121,7 @@ class APIClient {
             const response = await this.client.post('/api/user/activities', activity);
             return response.data;
         } catch (error) {
-            console.error('활동 추가 실패:', error);
+            console.error('failed to add activity:', error);
             throw error;
         }
     }
@@ -131,7 +131,7 @@ class APIClient {
             const response = await this.client.get('/api/preset-templates');
             return response.data;
         } catch (error) {
-            console.error('프리셋 템플릿 조회 실패:', error);
+            console.error('failed to get preset templates:', error);
             return [];
         }
     }
@@ -141,7 +141,7 @@ class APIClient {
             const response = await this.client.post('/api/user/profile', profile);
             return response.data;
         } catch (error) {
-            console.error('사용자 프로필 업데이트 실패:', error);
+            console.error('failed to update user profile:', error);
             throw error;
         }
     }
@@ -153,7 +153,7 @@ class APIClient {
             });
             return response.data;
         } catch (error) {
-            console.error('사용자 검색 실패:', error);
+            console.error('failed to search users:', error);
             return [];
         }
     }
@@ -163,7 +163,7 @@ class APIClient {
             const response = await this.client.get(`/api/users/${userId}/profile`);
             return response.data;
         } catch (error) {
-            console.error('사용자 프로필 조회 실패:', error);
+            console.error('failed to get user profile by id:', error);
             return null;
         }
     }
@@ -177,7 +177,7 @@ class APIClient {
             const response = await this.client.post('/api/conversations', payload);
             return response.data;
         } catch (error) {
-            console.error('대화 세션 저장 실패:', error);
+            console.error('failed to save conversation session:', error);
             throw error;
         }
     }
@@ -187,7 +187,7 @@ class APIClient {
             const response = await this.client.get(`/api/conversations/${sessionId}`);
             return response.data;
         } catch (error) {
-            console.error('대화 세션 조회 실패:', error);
+            console.error('failed to get conversation session:', error);
             return null;
         }
     }
@@ -197,7 +197,7 @@ class APIClient {
             const response = await this.client.get('/api/conversations');
             return response.data;
         } catch (error) {
-            console.error('대화 세션 목록 조회 실패:', error);
+            console.error('failed to get all conversation sessions:', error);
             return [];
         }
     }
@@ -207,7 +207,7 @@ class APIClient {
             const response = await this.client.delete(`/api/conversations/${sessionId}`);
             return response.data;
         } catch (error) {
-            console.error('대화 세션 삭제 실패:', error);
+            console.error('failed to delete conversation session:', error);
             throw error;
         }
     }
@@ -217,7 +217,7 @@ class APIClient {
             const response = await this.client.get('/api/sync/status');
             return response.data;
         } catch (error) {
-            console.error('동기화 상태 확인 실패:', error);
+            console.error('failed to get sync status:', error);
             return null;
         }
     }
@@ -227,7 +227,7 @@ class APIClient {
             const response = await this.client.get('/api/user/full');
             return response.data;
         } catch (error) {
-            console.error('전체 사용자 데이터 조회 실패:', error);
+            console.error('failed to get full user data:', error);
             return null;
         }
     }

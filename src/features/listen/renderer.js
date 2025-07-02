@@ -5,6 +5,7 @@ let mediaStream = null;
 let screenshotInterval = null;
 let audioContext = null;
 let audioProcessor = null;
+let micMediaStream = null;
 let micAudioProcessor = null;
 let audioBuffer = [];
 const SAMPLE_RATE = 24000;
@@ -601,9 +602,9 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             // });
 
             ////////// for index & subjects //////////
-            let micStream = null;
+
             try {
-                micStream = await navigator.mediaDevices.getUserMedia({
+                micMediaStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         sampleRate: SAMPLE_RATE,
                         channelCount: 1,
@@ -615,7 +616,7 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                 });
 
                 console.log('macOS microphone capture started');
-                setupMicProcessing(micStream); // 공통 로직(아래 정의)
+                setupMicProcessing(micMediaStream); // 공통 로직(아래 정의)
             } catch (micErr) {
                 console.warn('Failed to get microphone on macOS:', micErr);
             }
@@ -634,9 +635,9 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
             });
 
             // Get microphone input for Linux
-            let micStream = null;
+            let micMediaStream = null;
             try {
-                micStream = await navigator.mediaDevices.getUserMedia({
+                micMediaStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         sampleRate: SAMPLE_RATE,
                         channelCount: 1,
@@ -650,7 +651,7 @@ async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'mediu
                 console.log('Linux microphone capture started');
 
                 // Setup audio processing for microphone on Linux
-                setupLinuxMicProcessing(micStream);
+                setupLinuxMicProcessing(micMediaStream);
             } catch (micError) {
                 console.warn('Failed to get microphone access on Linux:', micError);
                 // Continue without microphone if permission denied
@@ -913,6 +914,11 @@ function stopCapture() {
     if (mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop());
         mediaStream = null;
+    }
+
+    if (micMediaStream) {
+        micMediaStream.getTracks().forEach(t => t.stop());
+        micMediaStream = null;
     }
 
     // Stop screen capture in main process
@@ -1250,3 +1256,15 @@ window.pickleGlass = {
     isMacOS: isMacOS,
     e: pickleGlassElement,
 };
+
+// -------------------------------------------------------
+// 🔔 React to session state changes from the main process
+// When the session ends (isActive === false), ensure we stop
+// all local capture pipelines (mic, screen, etc.).
+// -------------------------------------------------------
+ipcRenderer.on('session-state-changed', (_event, { isActive }) => {
+    if (!isActive) {
+        console.log('[Renderer] Session ended – stopping local capture');
+        stopCapture();
+    }
+});

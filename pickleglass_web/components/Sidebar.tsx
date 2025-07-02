@@ -574,7 +574,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                         : 'bg-green-100 text-green-800'
                 }`}
              >
-                {hasApiKey ? '로컬 실행중' : 'Pickle Free System 이용중'}
+                {hasApiKey ? 'Running Locally' : 'Using Pickle Free System'}
              </span>
            </div>
         )}

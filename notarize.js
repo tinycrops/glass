@@ -18,7 +18,7 @@ exports.notarizeApp = async function (context) {
   }
 
   await notarize({
-    appBundleId: 'com.pickle.glass', // package.json의 appId와 일치시켜야 합니다.
+    appBundleId: 'com.pickle.glass',
     appPath: appPath,
     appleId: process.env.APPLE_ID,
     appleIdPassword: process.env.APPLE_ID_PASSWORD,

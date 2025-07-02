@@ -905,12 +905,10 @@ export class AssistantView extends LitElement {
                 const wasActive = this.isSessionActive;
                 this.isSessionActive = isActive;
                 
-                // 녹음이 시작되면 완료 상태 초기화
                 if (!wasActive && isActive) {
                     this.hasCompletedRecording = false;
                 }
                 
-                // 녹음이 중지되면 완료 상태로 변경하고 follow-ups 추가
                 if (wasActive && !isActive) {
                     this.hasCompletedRecording = true;
                     

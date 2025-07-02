@@ -1588,6 +1588,18 @@ function setupIpcHandlers(openaiSessionRef) {
     ipcMain.handle('firebase-auth-state-changed', (event, user) => {
         console.log('[WindowManager] Firebase auth state changed:', user ? user.email : 'null');
         const previousUser = currentFirebaseUser; 
+
+        // 🛡️  Guard: ignore duplicate events where auth state did not actually change
+        const sameUser = (
+            user && previousUser && user.uid && previousUser.uid && user.uid === previousUser.uid
+        );
+        const bothNull = !user && !previousUser;
+        if (sameUser || bothNull) {
+            // No real state change ➜ skip further processing
+            console.log('[WindowManager] No real state change, skipping further processing');
+            return;
+        }
+
         currentFirebaseUser = user;
 
         if (user && user.email) {
@@ -1634,15 +1646,9 @@ function setupIpcHandlers(openaiSessionRef) {
                 }
             })();
         }
-        // Broadcast to all windows
-        windowPool.forEach(win => {
-            if (win && !win.isDestroyed()) {
-                win.webContents.send('firebase-user-updated', user);
-            }
-        });
-
+        
         // If the user logged out, also hide the settings window
-        if (!user) {
+        if (!user && previousUser) { // ADDED: Only trigger on actual state change from logged in to logged out
             console.log('[WindowManager] User logged out, clearing API key and notifying renderers');
             
             // ① API-Key 삭제 & DB 반영
@@ -1672,6 +1678,12 @@ function setupIpcHandlers(openaiSessionRef) {
                 console.log('[WindowManager] Settings window hidden after logout.');
             }
         }
+        // Broadcast to all windows
+        windowPool.forEach(win => {
+            if (win && !win.isDestroyed()) {
+                win.webContents.send('firebase-user-updated', user);
+            }
+        });
     });
 
     ipcMain.handle('get-current-firebase-user', () => {

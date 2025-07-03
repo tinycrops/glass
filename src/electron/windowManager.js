@@ -446,43 +446,64 @@ class SmoothMovementManager {
         const startTime = Date.now();
 
         const animate = () => {
-            if (!header || header.isDestroyed()) {
+            if (!header || typeof header.setPosition !== 'function' || header.isDestroyed()) {
                 this.isAnimating = false;
                 return;
             }
-
+        
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
-
             const eased = progress * progress * progress;
-
+        
             const currentX = startX + (targetX - startX) * eased;
             const currentY = startY + (targetY - startY) * eased;
-
+        
+            // Validate computed positions before using
             if (!Number.isFinite(currentX) || !Number.isFinite(currentY)) {
-                console.error('[Movement] Invalid animation values for hide:', { currentX, currentY, progress, eased });
+                console.error('[Movement] Invalid animation values for hide:', {
+                    currentX, currentY, progress, eased, startX, startY, targetX, targetY
+                });
                 this.isAnimating = false;
                 return;
             }
-
-            header.setPosition(Math.round(currentX), Math.round(currentY));
-
+        
+            // Safely call setPosition
+            try {
+                header.setPosition(Math.round(currentX), Math.round(currentY));
+            } catch (err) {
+                console.error('[Movement] Failed to set position:', err);
+                this.isAnimating = false;
+                return;
+            }
+        
             if (progress < 1) {
                 setTimeout(animate, 8);
             } else {
                 this.headerPosition = { x: targetX, y: targetY };
+        
                 if (Number.isFinite(targetX) && Number.isFinite(targetY)) {
-                    header.setPosition(Math.round(targetX), Math.round(targetY));
+                    try {
+                        header.setPosition(Math.round(targetX), Math.round(targetY));
+                    } catch (err) {
+                        console.error('[Movement] Failed to set final position:', err);
+                    }
                 }
+        
                 this.isAnimating = false;
-
-                if (callback) callback();
-
+        
+                if (typeof callback === 'function') {
+                    try {
+                        callback();
+                    } catch (err) {
+                        console.error('[Movement] Callback error:', err);
+                    }
+                }
+        
                 console.log(`[Movement] Hide to ${edge} completed`);
             }
         };
 
-        animate();
+    animate();
     }
 
     showFromEdge(callback) {

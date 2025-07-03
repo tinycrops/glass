@@ -25,26 +25,45 @@ const { autoUpdater } = require('electron-updater');
 let WEB_PORT = 3000;
 
 const openaiSessionRef = { current: null };
+let deeplink = null; // Initialize as null
+let pendingDeepLinkUrl = null; // Store any deep link that arrives before initialization
 
 function createMainWindows() {
     createWindows();
 
     const { windowPool } = require('./electron/windowManager');
-    deeplink.mainWindow = windowPool.get('header');
+    const headerWindow = windowPool.get('header');
+    
+    // Initialize deeplink after windows are created
+    if (!deeplink && headerWindow) {
+        try {
+            deeplink = new Deeplink({
+                app,
+                mainWindow: headerWindow,     
+                protocol: 'pickleglass',
+                isDev: !app.isPackaged,
+                debugLogging: true
+            });
+            
+            deeplink.on('received', (url) => {
+                console.log('[deeplink] received:', url);
+                handleCustomUrl(url);
+            });
+            
+            console.log('[deeplink] Initialized with main window');
+            
+            // Handle any pending deep link
+            if (pendingDeepLinkUrl) {
+                console.log('[deeplink] Processing pending deep link:', pendingDeepLinkUrl);
+                handleCustomUrl(pendingDeepLinkUrl);
+                pendingDeepLinkUrl = null;
+            }
+        } catch (error) {
+            console.error('[deeplink] Failed to initialize deep link:', error);
+            deeplink = null;
+        }
+    }
 }
-
-const deeplink = new Deeplink({
-    app,
-    mainWindow: null,     
-    protocol: 'pickleglass',
-    isDev: !app.isPackaged,
-    debugLogging: true
-  });
-  
-  deeplink.on('received', (url) => {
-    console.log('[deeplink] received:', url);
-    handleCustomUrl(url);
-  });
 
 app.whenReady().then(async () => {
     const gotTheLock = app.requestSingleInstanceLock();
@@ -107,6 +126,24 @@ app.on('activate', () => {
         createMainWindows();
     }
 });
+
+// Add macOS native deep link handling as fallback
+app.on('open-url', (event, url) => {
+    event.preventDefault();
+    console.log('[app] open-url received:', url);
+    
+    if (!deeplink) {
+        // Store the URL if deeplink isn't ready yet
+        pendingDeepLinkUrl = url;
+        console.log('[app] Deep link stored for later processing');
+    } else {
+        handleCustomUrl(url);
+    }
+});
+
+// Ensure app can handle the protocol
+app.setAsDefaultProtocolClient('pickleglass');
+
 function setupGeneralIpcHandlers() {
     ipcMain.handle('open-external', async (event, url) => {
         try {

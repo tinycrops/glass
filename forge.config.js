@@ -13,6 +13,12 @@ module.exports = {
         name: 'Glass',
         icon: 'src/assets/logo',
         appBundleId: 'com.pickle.glass',
+        protocols: [
+            {
+                name: 'PickleGlass Protocol',
+                schemes: ['pickleglass']
+            }
+        ],
         asarUnpack: [
             "**/*.node",
             "**/*.dylib",

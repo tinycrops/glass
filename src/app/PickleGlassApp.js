@@ -159,6 +159,15 @@ export class PickleGlassApp extends LitElement {
             await window.pickleGlass.initializeopenai(this.selectedProfile, this.selectedLanguage);
             window.pickleGlass.startCapture(this.selectedScreenshotInterval, this.selectedImageQuality);
         }
+
+        // 🔄 Clear previous summary/analysis when a new listening session begins
+        this.structuredData = {
+            summary: [],
+            topic: { header: '', bullets: [] },
+            actions: [],
+            followUps: [],
+        };
+
         this.currentResponseIndex = -1;
         this.startTime = Date.now();
         this.currentView = 'listen';

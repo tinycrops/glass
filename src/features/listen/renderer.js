@@ -1147,5 +1147,18 @@ ipcRenderer.on('session-state-changed', (_event, { isActive }) => {
     if (!isActive) {
         console.log('[Renderer] Session ended – stopping local capture');
         stopCapture();
+    } else {
+        console.log('[Renderer] New session started – clearing in-memory history and summaries');
+
+        // Reset live conversation & analysis caches
+        realtimeConversationHistory = [];
+
+        const blankData = {
+            summary: [],
+            topic: { header: '', bullets: [] },
+            actions: [],
+            followUps: [],
+        };
+        window.pickleGlass.setStructuredData(blankData);
     }
 });

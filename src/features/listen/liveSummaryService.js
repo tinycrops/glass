@@ -443,6 +443,10 @@ async function initializeNewSession() {
         myCurrentUtterance = '';
         theirCurrentUtterance = '';
 
+        // 🔄 Reset analysis state so the new session starts fresh
+        previousAnalysisResult = null;
+        analysisHistory = [];
+
         // sendToRenderer('update-outline', []);
         // sendToRenderer('update-analysis-requests', []);
 

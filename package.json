@@ -1,21 +1,23 @@
 {
     "name": "pickle-glass",
-    "productName": "Pickle Glass",
-    "version": "0.3.0",
-    "description": "AI-powered real-time assistance.",
+    "productName": "Glass",
+    "version": "0.1.0",
+    "description": "Cl*ely for Free",
     "main": "src/index.js",
     "scripts": {
         "setup": "npm install && cd pickleglass_web && npm install && npm run build && cd .. && npm start",
         "start": "npm run build:renderer && electron-forge start",
         "package": "npm run build:renderer && electron-forge package",
         "make": "npm run build:renderer && electron-forge make",
-        "publish": "electron-forge publish",
+        "build": "npm run build:renderer && electron-builder --config electron-builder.yml --publish never",
+        "publish": "npm run build:renderer && electron-builder --config electron-builder.yml --publish always",
         "lint": "eslint --ext .ts,.tsx,.js .",
-        "postinstall": "electron-rebuild",
+        "postinstall": "electron-builder install-app-deps",
         "build:renderer": "node build.js",
         "watch:renderer": "node build.js --watch"
     },
     "keywords": [
+        "glass",
         "pickle glass",
         "ai assistant",
         "real-time",
@@ -23,9 +25,9 @@
         "contextual ai"
     ],
     "author": {
-        "name": "pickle glass"
+        "name": "Pickle Team"
     },
-    "license": "GPL-3.0",
+    "license": "Apache-2.0",
     "dependencies": {
         "axios": "^1.10.0",
         "better-sqlite3": "^9.4.3",
@@ -60,7 +62,6 @@
         "@electron/notarize": "^2.5.0",
         "electron": "^30.5.1",
         "electron-builder": "^26.0.12",
-        "electron-rebuild": "^3.2.9",
         "electron-reloader": "^1.2.3",
         "esbuild": "^0.25.5"
     }

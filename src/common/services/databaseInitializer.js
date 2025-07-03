@@ -21,22 +21,24 @@ class DatabaseInitializer {
 
     ensureDatabaseExists() {
         if (!fs.existsSync(this.dbPath)) {
-            console.log(`[DB] Database not found at ${this.dbPath}. Copying from source...`);
-            
-            try {
-                // userData 디렉토리 생성 (없을 경우)
-                if (!fs.existsSync(this.dataDir)) {
-                    fs.mkdirSync(this.dataDir, { recursive: true });
+            console.log(`[DB] Database not found at ${this.dbPath}. Preparing to create new database...`);
+
+            // userData 디렉토리 생성 (없을 경우)
+            if (!fs.existsSync(this.dataDir)) {
+                fs.mkdirSync(this.dataDir, { recursive: true });
+            }
+
+            // 패키지에 번들된 초기 DB가 있으면 복사, 없으면 빈 파일을 생성하도록 둔다.
+            if (fs.existsSync(this.sourceDbPath)) {
+                try {
+                    fs.copyFileSync(this.sourceDbPath, this.dbPath);
+                    console.log(`[DB] Bundled database copied to ${this.dbPath}`);
+                } catch (error) {
+                    console.error(`[DB] Failed to copy bundled database:`, error);
+                    // 복사 실패 시에도 새 DB를 생성할 수 있도록 계속 진행
                 }
-
-                // 원본 DB 파일 복사
-                fs.copyFileSync(this.sourceDbPath, this.dbPath);
-                console.log(`[DB] Database successfully copied to ${this.dbPath}`);
-
-            } catch (error) {
-                console.error(`[DB] Failed to copy database from ${this.sourceDbPath} to ${this.dbPath}:`, error);
-                // 복사 실패 시 심각한 문제이므로 앱을 종료하거나 에러 처리 필요
-                throw new Error('Could not create user database.');
+            } else {
+                console.log('[DB] No bundled DB found – a fresh database will be created.');
             }
         }
     }

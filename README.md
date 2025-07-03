@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://github.com/calcom/cal.com">
+  <a href="https://www.pickle.com/glass">
    <img src="./public/assets/banner.png" alt="Logo">
   </a>
 

@@ -36,16 +36,36 @@ export class AssistantView extends LitElement {
             color: #ffd700 !important;
         }
 
-        .hljs-keyword { color: #ff79c6 !important; }
-        .hljs-string { color: #f1fa8c !important; }
-        .hljs-comment { color: #6272a4 !important; }
-        .hljs-number { color: #bd93f9 !important; }
-        .hljs-function { color: #50fa7b !important; }
-        .hljs-variable { color: #8be9fd !important; }
-        .hljs-built_in { color: #ffb86c !important; }
-        .hljs-title { color: #50fa7b !important; }
-        .hljs-attr { color: #50fa7b !important; }
-        .hljs-tag { color: #ff79c6 !important; }
+        .hljs-keyword {
+            color: #ff79c6 !important;
+        }
+        .hljs-string {
+            color: #f1fa8c !important;
+        }
+        .hljs-comment {
+            color: #6272a4 !important;
+        }
+        .hljs-number {
+            color: #bd93f9 !important;
+        }
+        .hljs-function {
+            color: #50fa7b !important;
+        }
+        .hljs-variable {
+            color: #8be9fd !important;
+        }
+        .hljs-built_in {
+            color: #ffb86c !important;
+        }
+        .hljs-title {
+            color: #50fa7b !important;
+        }
+        .hljs-attr {
+            color: #50fa7b !important;
+        }
+        .hljs-tag {
+            color: #ff79c6 !important;
+        }
 
         .assistant-container {
             display: flex;
@@ -65,13 +85,14 @@ export class AssistantView extends LitElement {
         .assistant-container::after {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             border-radius: 12px; /* Match parent */
             padding: 1px;
-            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%); 
-            -webkit-mask:
-                linear-gradient(#fff 0 0) content-box,
-                linear-gradient(#fff 0 0);
+            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
             -webkit-mask-composite: destination-out;
             mask-composite: exclude;
             pointer-events: none;
@@ -270,7 +291,7 @@ export class AssistantView extends LitElement {
             margin-bottom: 4px;
             box-sizing: border-box;
         }
-        
+
         .stt-message.them {
             background: rgba(255, 255, 255, 0.1);
             color: rgba(255, 255, 255, 0.9);
@@ -278,13 +299,13 @@ export class AssistantView extends LitElement {
             border-bottom-left-radius: 4px;
             margin-right: auto;
         }
-        
+
         .stt-message.me {
             background: rgba(0, 122, 255, 0.8);
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 4px;
-            margin-left: auto; 
+            margin-left: auto;
         }
 
         .insights-container {
@@ -299,7 +320,7 @@ export class AssistantView extends LitElement {
 
         insights-title {
             color: rgba(255, 255, 255, 0.8);
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 500;
             font-family: 'Helvetica Neue', sans-serif;
             margin: 12px 0 8px 0;
@@ -362,8 +383,8 @@ export class AssistantView extends LitElement {
 
         .request-item {
             color: #ffffff;
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 12px;
+            line-height: 1.2;
             margin: 4px 0;
             padding: 6px 8px;
             border-radius: 4px;
@@ -405,7 +426,8 @@ export class AssistantView extends LitElement {
             margin: 4px 0;
         }
 
-        .markdown-content ul, .markdown-content ol {
+        .markdown-content ul,
+        .markdown-content ol {
             margin: 4px 0;
             padding-left: 16px;
         }
@@ -433,7 +455,6 @@ export class AssistantView extends LitElement {
             color: #f1fa8c;
         }
 
-        /* 타이머 스타일 */
         .timer {
             font-family: 'Monaco', 'Menlo', monospace;
             font-size: 10px;
@@ -464,7 +485,7 @@ export class AssistantView extends LitElement {
             summary: [],
             topic: { header: '', bullets: [] },
             actions: [],
-            followUps: []
+            followUps: [],
         };
         this.isSessionActive = false;
         this.hasCompletedRecording = false;
@@ -477,7 +498,7 @@ export class AssistantView extends LitElement {
         this.timerInterval = null;
         this.resizeObserver = null;
         this.adjustHeightThrottle = null;
-        this.isThrottled = false; 
+        this.isThrottled = false;
         this._shouldScrollAfterUpdate = false;
         this.messageIdCounter = 0;
         this.copyState = 'idle';
@@ -498,7 +519,7 @@ export class AssistantView extends LitElement {
         };
         this.handleSttUpdate = this.handleSttUpdate.bind(this);
         this.adjustWindowHeight = this.adjustWindowHeight.bind(this);
-        
+
         this.loadLibraries();
     }
 
@@ -527,7 +548,7 @@ export class AssistantView extends LitElement {
             if (!window.marked) {
                 await this.loadScript('../../assets/marked-4.3.0.min.js');
             }
-            
+
             if (!window.hljs) {
                 await this.loadScript('../../assets/highlight-11.9.0.min.js');
             }
@@ -558,7 +579,7 @@ export class AssistantView extends LitElement {
                         return code;
                     },
                     breaks: true,
-                    gfm: true
+                    gfm: true,
                 });
 
                 this.isLibrariesLoaded = true;
@@ -586,11 +607,11 @@ export class AssistantView extends LitElement {
 
     parseMarkdown(text) {
         if (!text) return '';
-        
+
         if (!this.isLibrariesLoaded || !this.marked) {
             return text;
         }
-        
+
         try {
             return this.marked(text);
         } catch (error) {
@@ -598,7 +619,6 @@ export class AssistantView extends LitElement {
             return text;
         }
     }
-
 
     handleMarkdownClick(originalText) {
         this.handleRequestClick(originalText);
@@ -615,17 +635,17 @@ export class AssistantView extends LitElement {
             if (originalText) {
                 try {
                     let parsedHTML = this.parseMarkdown(originalText);
-                    
+
                     if (this.isDOMPurifyLoaded && this.DOMPurify) {
                         parsedHTML = this.DOMPurify.sanitize(parsedHTML);
-                        
+
                         if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
                             console.warn('Unsafe content detected in insights, showing plain text');
                             element.textContent = '⚠️ ' + originalText;
                             return;
                         }
                     }
-                    
+
                     element.innerHTML = parsedHTML;
                 } catch (error) {
                     console.error('Error rendering markdown for element:', error);
@@ -657,31 +677,35 @@ export class AssistantView extends LitElement {
 
     adjustWindowHeight() {
         if (!window.require) return;
-        
-        this.updateComplete.then(() => {
-            const topBar = this.shadowRoot.querySelector('.top-bar');
-            const activeContent = this.viewMode === 'transcript' 
-                ? this.shadowRoot.querySelector('.transcription-container')
-                : this.shadowRoot.querySelector('.insights-container');
-            
-            if (!topBar || !activeContent) return;
-            
-            const topBarHeight = topBar.offsetHeight;
-            
-            const contentHeight = activeContent.scrollHeight;
-            
-            const idealHeight = topBarHeight + contentHeight + 20;
 
-            const targetHeight = Math.min(700, Math.max(200, idealHeight)); 
-            
-            console.log(`[Height Adjusted] Mode: ${this.viewMode}, TopBar: ${topBarHeight}px, Content: ${contentHeight}px, Ideal: ${idealHeight}px, Target: ${targetHeight}px`);
-            
-            const { ipcRenderer } = window.require('electron');
-            ipcRenderer.invoke('adjust-window-height', targetHeight);
-            
-        }).catch(error => {
-            console.error('Error in adjustWindowHeight:', error);
-        });
+        this.updateComplete
+            .then(() => {
+                const topBar = this.shadowRoot.querySelector('.top-bar');
+                const activeContent =
+                    this.viewMode === 'transcript'
+                        ? this.shadowRoot.querySelector('.transcription-container')
+                        : this.shadowRoot.querySelector('.insights-container');
+
+                if (!topBar || !activeContent) return;
+
+                const topBarHeight = topBar.offsetHeight;
+
+                const contentHeight = activeContent.scrollHeight;
+
+                const idealHeight = topBarHeight + contentHeight + 20;
+
+                const targetHeight = Math.min(700, Math.max(200, idealHeight));
+
+                console.log(
+                    `[Height Adjusted] Mode: ${this.viewMode}, TopBar: ${topBarHeight}px, Content: ${contentHeight}px, Ideal: ${idealHeight}px, Target: ${targetHeight}px`
+                );
+
+                const { ipcRenderer } = window.require('electron');
+                ipcRenderer.invoke('adjust-window-height', targetHeight);
+            })
+            .catch(error => {
+                console.error('Error in adjustWindowHeight:', error);
+            });
     }
 
     toggleViewMode() {
@@ -703,13 +727,13 @@ export class AssistantView extends LitElement {
         const result = {
             currentSummary: [],
             mainTopicHeading: '',
-            mainTopicBullets: []
+            mainTopicBullets: [],
         };
-        
+
         if (!this.outlines || this.outlines.length === 0) {
             return result;
         }
-        
+
         const allBullets = this.outlines.filter(item => item.startsWith('BULLET::'));
         if (allBullets.length > 0) {
             result.currentSummary.push(allBullets[0].replace('BULLET::', '').trim());
@@ -719,16 +743,13 @@ export class AssistantView extends LitElement {
         if (heading) {
             result.mainTopicHeading = heading.replace('HEADING::', '').trim();
         }
-        
+
         if (allBullets.length > 1) {
-            result.mainTopicBullets = allBullets
-                .slice(1)
-                .map(item => item.replace('BULLET::', '').trim());
+            result.mainTopicBullets = allBullets.slice(1).map(item => item.replace('BULLET::', '').trim());
         }
-        
+
         return result;
     }
-
 
     async handleCopy() {
         if (this.copyState === 'copied') return;
@@ -740,15 +761,15 @@ export class AssistantView extends LitElement {
         } else {
             const data = this.structuredData || { summary: [], topic: { header: '', bullets: [] }, actions: [] };
             let sections = [];
-            
+
             if (data.summary && data.summary.length > 0) {
                 sections.push(`Current Summary:\n${data.summary.map(s => `• ${s}`).join('\n')}`);
             }
-            
+
             if (data.topic && data.topic.header && data.topic.bullets.length > 0) {
                 sections.push(`\n${data.topic.header}:\n${data.topic.bullets.map(b => `• ${b}`).join('\n')}`);
             }
-            
+
             if (data.actions && data.actions.length > 0) {
                 sections.push(`\nActions:\n${data.actions.map(a => `▸ ${a}`).join('\n')}`);
             }
@@ -756,7 +777,7 @@ export class AssistantView extends LitElement {
             if (data.followUps && data.followUps.length > 0) {
                 sections.push(`\nFollow-Ups:\n${data.followUps.map(f => `▸ ${f}`).join('\n')}`);
             }
-            
+
             textToCopy = sections.join('\n\n').trim();
         }
 
@@ -785,14 +806,11 @@ export class AssistantView extends LitElement {
             return;
         }
 
-
         this.adjustWindowHeight();
 
         this.isThrottled = true;
 
-
         this.adjustHeightThrottle = setTimeout(() => {
-
             this.isThrottled = false;
         }, 16);
     }
@@ -801,57 +819,56 @@ export class AssistantView extends LitElement {
         if (text === undefined) return;
 
         const container = this.shadowRoot.querySelector('.transcription-container');
-        this._shouldScrollAfterUpdate = container ? (container.scrollTop + container.clientHeight >= container.scrollHeight - 10) : false;
+        this._shouldScrollAfterUpdate = container ? container.scrollTop + container.clientHeight >= container.scrollHeight - 10 : false;
 
-                const findLastPartialIdx = (spk) => {
-                        for (let i = this.sttMessages.length - 1; i >= 0; i--) {
-                            const m = this.sttMessages[i];
-                            if (m.speaker === spk && m.isPartial) return i;
-                       }
-                        return -1;
-                    };
-            
-                    const newMessages = [...this.sttMessages];
-                    const targetIdx = findLastPartialIdx(speaker);
-            
-                if (isPartial) {
-                        if (targetIdx !== -1) {
-                            newMessages[targetIdx] = {
-                                ...newMessages[targetIdx],
-                                text,
-                                isPartial: true,
-                                isFinal: false,
-                            };
-                        } else {
-                            newMessages.push({
-                                id: this.messageIdCounter++,
-                                speaker,
-                                text,
-                                isPartial: true,
-                                isFinal: false,
-                            });
-                        }
-                    } else if (isFinal) {
-                        if (targetIdx !== -1) {
-                            newMessages[targetIdx] = {
-                                ...newMessages[targetIdx],
-                                text,
-                                isPartial: false,
-                                isFinal: true,
-                            };
-                        } else {
-                            newMessages.push({
-                                id: this.messageIdCounter++,
-                                speaker,
-                                text,
-                                isPartial: false,
-                                isFinal: true,
-                            });
-                        }
-                    }
-            
-                    this.sttMessages = newMessages;
+        const findLastPartialIdx = spk => {
+            for (let i = this.sttMessages.length - 1; i >= 0; i--) {
+                const m = this.sttMessages[i];
+                if (m.speaker === spk && m.isPartial) return i;
+            }
+            return -1;
+        };
 
+        const newMessages = [...this.sttMessages];
+        const targetIdx = findLastPartialIdx(speaker);
+
+        if (isPartial) {
+            if (targetIdx !== -1) {
+                newMessages[targetIdx] = {
+                    ...newMessages[targetIdx],
+                    text,
+                    isPartial: true,
+                    isFinal: false,
+                };
+            } else {
+                newMessages.push({
+                    id: this.messageIdCounter++,
+                    speaker,
+                    text,
+                    isPartial: true,
+                    isFinal: false,
+                });
+            }
+        } else if (isFinal) {
+            if (targetIdx !== -1) {
+                newMessages[targetIdx] = {
+                    ...newMessages[targetIdx],
+                    text,
+                    isPartial: false,
+                    isFinal: true,
+                };
+            } else {
+                newMessages.push({
+                    id: this.messageIdCounter++,
+                    speaker,
+                    text,
+                    isPartial: false,
+                    isFinal: true,
+                });
+            }
+        }
+
+        this.sttMessages = newMessages;
     }
 
     scrollToTranscriptionBottom() {
@@ -865,20 +882,20 @@ export class AssistantView extends LitElement {
 
     async handleRequestClick(requestText) {
         console.log('🔥 Analysis request clicked:', requestText);
-        
+
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
-            
+
             try {
                 const isAskViewVisible = await ipcRenderer.invoke('is-window-visible', 'ask');
-                
+
                 if (!isAskViewVisible) {
                     await ipcRenderer.invoke('toggle-feature', 'ask');
                     await new Promise(resolve => setTimeout(resolve, 100));
                 }
-                
+
                 const result = await ipcRenderer.invoke('send-question-to-ask', requestText);
-                
+
                 if (result.success) {
                     console.log('✅ Question sent to AskView successfully');
                 } else {
@@ -899,13 +916,13 @@ export class AssistantView extends LitElement {
             ipcRenderer.on('session-state-changed', (event, { isActive }) => {
                 const wasActive = this.isSessionActive;
                 this.isSessionActive = isActive;
-                
+
                 if (!wasActive && isActive) {
                     this.hasCompletedRecording = false;
                 }
                 if (wasActive && !isActive) {
                     this.hasCompletedRecording = true;
-                    
+
                     this.requestUpdate();
                 }
             });
@@ -916,7 +933,7 @@ export class AssistantView extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         this.stopTimer();
-        
+
         if (this.adjustHeightThrottle) {
             clearTimeout(this.adjustHeightThrottle);
             this.adjustHeightThrottle = null;
@@ -924,7 +941,7 @@ export class AssistantView extends LitElement {
         if (this.copyTimeout) {
             clearTimeout(this.copyTimeout);
         }
-        
+
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.removeListener('stt-update', this.handleSttUpdate);
@@ -935,7 +952,7 @@ export class AssistantView extends LitElement {
 
     firstUpdated() {
         super.firstUpdated();
-        
+
         setTimeout(() => this.adjustWindowHeight(), 200);
     }
 
@@ -947,17 +964,14 @@ export class AssistantView extends LitElement {
         if (changedProperties.has('sttMessages')) {
             if (this._shouldScrollAfterUpdate) {
                 this.scrollToTranscriptionBottom();
-                this._shouldScrollAfterUpdate = false; 
+                this._shouldScrollAfterUpdate = false;
             }
             this.adjustWindowHeightThrottled();
         }
-        
+
         if (changedProperties.has('viewMode')) {
             this.adjustWindowHeight();
-        }
-        else if (changedProperties.has('outlines') || 
-                 changedProperties.has('analysisRequests') ||
-                 changedProperties.has('structuredData')) {
+        } else if (changedProperties.has('outlines') || changedProperties.has('analysisRequests') || changedProperties.has('structuredData')) {
             this.adjustWindowHeightThrottled();
         }
     }
@@ -970,17 +984,17 @@ export class AssistantView extends LitElement {
             : this.viewMode === 'insights'
             ? `Live insights`
             : `Glass is Listening ${this.elapsedTime}`;
-    
+
         const data = this.structuredData || {
             summary: [],
             topic: { header: '', bullets: [] },
-            actions: []
+            actions: [],
         };
 
-        const getSpeakerClass = (speaker) => {
+        const getSpeakerClass = speaker => {
             return speaker.toLowerCase() === 'me' ? 'me' : 'them';
         };
-    
+
         return html`
             <div class="assistant-container">
                 <div class="top-bar">
@@ -1016,78 +1030,91 @@ export class AssistantView extends LitElement {
                                 <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                             </svg>
                             <svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                 <path d="M20 6L9 17l-5-5"/>
+                                <path d="M20 6L9 17l-5-5" />
                             </svg>
                         </button>
                     </div>
                 </div>
-    
+
                 <div class="transcription-container ${this.viewMode !== 'transcript' ? 'hidden' : ''}">
                     ${this.sttMessages.map(msg => html` <div class="stt-message ${getSpeakerClass(msg.speaker)}">${msg.text}</div> `)}
                 </div>
-    
-               <div class="insights-container ${this.viewMode !== 'insights' ? 'hidden' : ''}">
-                <insights-title>Current Summary</insights-title>
-                ${data.summary.length > 0 ? 
-                    data.summary.slice(0, 5).map((bullet, index) => html`
-                        <div
-                            class="markdown-content"
-                            data-markdown-id="summary-${index}"
-                            data-original-text="${bullet}"
-                            @click=${() => this.handleMarkdownClick(bullet)}
-                        >
-                            ${bullet}
-                        </div>
-                    `) : html`
-                        <div class="request-item">
-                            No content yet...
-                        </div>
-                    `
-                }
-                
-                ${data.topic.header ? html`
-                    <insights-title>${data.topic.header}</insights-title>
-                    ${data.topic.bullets.slice(0, 3).map((bullet, index) => html`
-                        <div
-                            class="markdown-content"
-                            data-markdown-id="topic-${index}"
-                            data-original-text="${bullet}"
-                            @click=${() => this.handleMarkdownClick(bullet)}
-                        >
-                            ${bullet}
-                        </div>
-                    `)}
-                ` : ''}
-                
-                ${data.actions.length > 0 ? html`
-                    <insights-title>Actions</insights-title>
-                    ${data.actions.slice(0, 5).map((action, index) => html`
-                        <div
-                            class="markdown-content"
-                            data-markdown-id="action-${index}"
-                            data-original-text="${action}"
-                            @click=${() => this.handleMarkdownClick(action)}
-                        >
-                            ${action}
-                        </div>
-                    `)}
-                ` : ''}
 
-                ${this.hasCompletedRecording && data.followUps && data.followUps.length > 0 ? html`
-                    <insights-title>Follow-Ups</insights-title>
-                    ${data.followUps.map((followUp, index) => html`
-                        <div
-                            class="markdown-content"
-                            data-markdown-id="followup-${index}"
-                            data-original-text="${followUp}"
-                            @click=${() => this.handleMarkdownClick(followUp)}
-                        >
-                            ${followUp}
-                        </div>
-                    `)}
-                ` : ''}
+                <div class="insights-container ${this.viewMode !== 'insights' ? 'hidden' : ''}">
+                    <insights-title>Current Summary</insights-title>
+                    ${data.summary.length > 0
+                        ? data.summary
+                              .slice(0, 5)
+                              .map(
+                                  (bullet, index) => html`
+                                      <div
+                                          class="markdown-content"
+                                          data-markdown-id="summary-${index}"
+                                          data-original-text="${bullet}"
+                                          @click=${() => this.handleMarkdownClick(bullet)}
+                                      >
+                                          ${bullet}
+                                      </div>
+                                  `
+                              )
+                        : html` <div class="request-item">No content yet...</div> `}
+                    ${data.topic.header
+                        ? html`
+                              <insights-title>${data.topic.header}</insights-title>
+                              ${data.topic.bullets
+                                  .slice(0, 3)
+                                  .map(
+                                      (bullet, index) => html`
+                                          <div
+                                              class="markdown-content"
+                                              data-markdown-id="topic-${index}"
+                                              data-original-text="${bullet}"
+                                              @click=${() => this.handleMarkdownClick(bullet)}
+                                          >
+                                              ${bullet}
+                                          </div>
+                                      `
+                                  )}
+                          `
+                        : ''}
+                    ${data.actions.length > 0
+                        ? html`
+                              <insights-title>Actions</insights-title>
+                              ${data.actions
+                                  .slice(0, 5)
+                                  .map(
+                                      (action, index) => html`
+                                          <div
+                                              class="markdown-content"
+                                              data-markdown-id="action-${index}"
+                                              data-original-text="${action}"
+                                              @click=${() => this.handleMarkdownClick(action)}
+                                          >
+                                              ${action}
+                                          </div>
+                                      `
+                                  )}
+                          `
+                        : ''}
+                    ${this.hasCompletedRecording && data.followUps && data.followUps.length > 0
+                        ? html`
+                              <insights-title>Follow-Ups</insights-title>
+                              ${data.followUps.map(
+                                  (followUp, index) => html`
+                                      <div
+                                          class="markdown-content"
+                                          data-markdown-id="followup-${index}"
+                                          data-original-text="${followUp}"
+                                          @click=${() => this.handleMarkdownClick(followUp)}
+                                      >
+                                          ${followUp}
+                                      </div>
+                                  `
+                              )}
+                          `
+                        : ''}
+                </div>
             </div>
-        </div>
         `;
     }
 }

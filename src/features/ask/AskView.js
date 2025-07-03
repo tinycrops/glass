@@ -53,16 +53,36 @@ export class AskView extends LitElement {
             color: #ffd700 !important;
         }
 
-        .hljs-keyword { color: #ff79c6 !important; }
-        .hljs-string { color: #f1fa8c !important; }
-        .hljs-comment { color: #6272a4 !important; }
-        .hljs-number { color: #bd93f9 !important; }
-        .hljs-function { color: #50fa7b !important; }
-        .hljs-variable { color: #8be9fd !important; }
-        .hljs-built_in { color: #ffb86c !important; }
-        .hljs-title { color: #50fa7b !important; }
-        .hljs-attr { color: #50fa7b !important; }
-        .hljs-tag { color: #ff79c6 !important; }
+        .hljs-keyword {
+            color: #ff79c6 !important;
+        }
+        .hljs-string {
+            color: #f1fa8c !important;
+        }
+        .hljs-comment {
+            color: #6272a4 !important;
+        }
+        .hljs-number {
+            color: #bd93f9 !important;
+        }
+        .hljs-function {
+            color: #50fa7b !important;
+        }
+        .hljs-variable {
+            color: #8be9fd !important;
+        }
+        .hljs-built_in {
+            color: #ffb86c !important;
+        }
+        .hljs-title {
+            color: #50fa7b !important;
+        }
+        .hljs-attr {
+            color: #50fa7b !important;
+        }
+        .hljs-tag {
+            color: #ff79c6 !important;
+        }
 
         .ask-container {
             display: flex;
@@ -239,7 +259,7 @@ export class AskView extends LitElement {
             border-radius: 20px;
             outline: 1px rgba(255, 255, 255, 0.3) solid;
             outline-offset: -1px;
-            backdrop-filter: blur(0.50px);
+            backdrop-filter: blur(0.5px);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -317,7 +337,9 @@ export class AskView extends LitElement {
         }
 
         @keyframes pulse {
-            0%, 80%, 100% {
+            0%,
+            80%,
+            100% {
                 opacity: 0.3;
                 transform: scale(0.8);
             }
@@ -403,7 +425,7 @@ export class AskView extends LitElement {
         #textInput {
             flex: 1;
             padding: 10px 14px;
-            background: rgba(0, 0, 0, 0.20);
+            background: rgba(0, 0, 0, 0.2);
             border-radius: 20px;
             outline: none;
             border: none;
@@ -497,39 +519,28 @@ export class AskView extends LitElement {
         this.showResponsePanel = true;
         this.isLoading = false;
         this.copyState = 'idle';
-        this.isHovering = false;
-        this.copyTimeout = null;
-        this.hoveredLineIndex = -1;
-        this.lineCopyState = {};
-        this.lineCopyTimeouts = {};
         this.showTextInput = true;
         this.headerText = 'AI Response';
         this.headerAnimating = false;
         this.isStreaming = false;
-        this.streamedResponse = '';
-        this.headerAnimationTimeout = null;
-        this.streamingTimeout = null;
+        this.accumulatedResponse = ''; // 스트리밍 텍스트 누적용
 
         this.marked = null;
         this.hljs = null;
-        this.isLibrariesLoaded = false;
         this.DOMPurify = null;
-        this.isDOMPurifyLoaded = false;
-        
-        this.streamingContainer = null;
-        this.accumulatedChunks = '';
-        this.lastSafeContent = '';
+        this.isLibrariesLoaded = false;
 
+        // 핸들러 바인딩
+        this.handleStreamChunk = this.handleStreamChunk.bind(this);
+        this.handleStreamEnd = this.handleStreamEnd.bind(this);
         this.handleSendText = this.handleSendText.bind(this);
         this.handleTextKeydown = this.handleTextKeydown.bind(this);
         this.closeResponsePanel = this.closeResponsePanel.bind(this);
-        this.handleNewResponse = this.handleNewResponse.bind(this);
         this.handleCopy = this.handleCopy.bind(this);
-        this.handleLineCopy = this.handleLineCopy.bind(this);
-        this.handleGlobalSendRequest = this.handleGlobalSendRequest.bind(this);
-        this.handleToggleTextInput = this.handleToggleTextInput.bind(this);
         this.clearResponseContent = this.clearResponseContent.bind(this);
-        
+        this.processAssistantQuestion = this.processAssistantQuestion.bind(this);
+        this.handleToggleTextInput = this.handleToggleTextInput.bind(this);
+
         this.loadLibraries();
     }
 
@@ -538,7 +549,7 @@ export class AskView extends LitElement {
             if (!window.marked) {
                 await this.loadScript('../../assets/marked-4.3.0.min.js');
             }
-            
+
             if (!window.hljs) {
                 await this.loadScript('../../assets/highlight-11.9.0.min.js');
             }
@@ -569,10 +580,11 @@ export class AskView extends LitElement {
                         return code;
                     },
                     breaks: true,
-                    gfm: true
+                    gfm: true,
                 });
 
                 this.isLibrariesLoaded = true;
+                this.renderContent();
                 console.log('Markdown libraries loaded successfully in AskView');
             }
 
@@ -582,6 +594,40 @@ export class AskView extends LitElement {
             }
         } catch (error) {
             console.error('Failed to load libraries in AskView:', error);
+        }
+    }
+
+    handleDocumentClick(e) {
+        if (!this.currentResponse && !this.isLoading && !this.isStreaming) {
+            const askContainer = this.shadowRoot?.querySelector('.ask-container');
+            if (askContainer && !e.composedPath().includes(askContainer)) {
+                this.closeIfNoContent();
+            }
+        }
+    }
+
+    handleEscKey(e) {
+        if (e.key === 'Escape') {
+            if (!this.currentResponse && !this.isLoading && !this.isStreaming) {
+                e.preventDefault();
+                this.closeIfNoContent();
+            }
+        }
+    }
+
+    handleWindowBlur() {
+        if (!this.currentResponse && !this.isLoading && !this.isStreaming) {
+            const askWindow = window.require('electron').remote.getCurrentWindow();
+            if (!askWindow.isFocused()) {
+                this.closeIfNoContent();
+            }
+        }
+    }
+
+    closeIfNoContent() {
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            ipcRenderer.invoke('force-close-window', 'ask');
         }
     }
 
@@ -597,11 +643,11 @@ export class AskView extends LitElement {
 
     parseMarkdown(text) {
         if (!text) return '';
-        
+
         if (!this.isLibrariesLoaded || !this.marked) {
             return text;
         }
-        
+
         try {
             return this.marked(text);
         } catch (error) {
@@ -612,21 +658,24 @@ export class AskView extends LitElement {
 
     fixIncompleteCodeBlocks(text) {
         if (!text) return text;
-        
+
         const codeBlockMarkers = text.match(/```/g) || [];
         const markerCount = codeBlockMarkers.length;
-        
+
         if (markerCount % 2 === 1) {
             return text + '\n```';
         }
-        
+
         return text;
     }
 
     connectedCallback() {
         super.connectedCallback();
-        
+
         console.log('📱 AskView connectedCallback - IPC 이벤트 리스너 설정');
+
+        document.addEventListener('click', this.handleDocumentClick, true);
+        document.addEventListener('keydown', this.handleEscKey);
 
         this.resizeObserver = new ResizeObserver(entries => {
             for (const entry of entries) {
@@ -647,32 +696,30 @@ export class AskView extends LitElement {
             this.currentResponse = '';
             this.streamedResponse = '';
             this.isStreaming = false;
-            this.updateResponseContent();
             this.requestUpdate();
-            
+
             this.currentQuestion = question;
             this.isLoading = true;
             this.showTextInput = false;
             this.headerText = 'analyzing screen...';
             this.startHeaderAnimation();
             this.requestUpdate();
-            
+
             this.processAssistantQuestion(question);
         };
-        
-        
+
         this.handleAddAskResponse = (event, data) => {
             console.log('📨 AskView: add-ask-response IPC 이벤트 수신!', data);
-            
+
             const { question, response } = data;
-            
+
             this.currentQuestion = question;
             this.startHeaderAnimation();
             this.simulateStreaming(response);
-            
+
             console.log('✅ AskView: 응답 업데이트 완료');
         };
-        
+
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.on('add-ask-response', this.handleAddAskResponse);
@@ -692,7 +739,6 @@ export class AskView extends LitElement {
                 this.isStreaming = false;
                 this.isLoading = false;
                 this.headerText = 'AI Response';
-                this.updateResponseContent();
                 this.requestUpdate();
             });
             ipcRenderer.on('window-hide-animation', () => {
@@ -701,6 +747,20 @@ export class AskView extends LitElement {
                     this.clearResponseContent();
                 }, 250);
             });
+            ipcRenderer.on('window-blur', this.handleWindowBlur);
+            ipcRenderer.on('window-did-show', () => {
+                if (!this.currentResponse && !this.isLoading && !this.isStreaming) {
+                    setTimeout(() => {
+                        const textInput = this.shadowRoot?.getElementById('textInput');
+                        if (textInput) {
+                            textInput.focus();
+                        }
+                    }, 100);
+                }
+            });
+
+            ipcRenderer.on('ask-response-chunk', this.handleStreamChunk);
+            ipcRenderer.on('ask-response-stream-end', this.handleStreamEnd);
             console.log('✅ AskView: IPC 이벤트 리스너 등록 완료');
         }
     }
@@ -708,9 +768,12 @@ export class AskView extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         this.resizeObserver?.disconnect();
-        
+
         console.log('📱 AskView disconnectedCallback - IPC 이벤트 리스너 제거');
-        
+
+        document.removeEventListener('click', this.handleDocumentClick, true);
+        document.removeEventListener('keydown', this.handleEscKey);
+
         if (this.copyTimeout) {
             clearTimeout(this.copyTimeout);
         }
@@ -724,7 +787,7 @@ export class AskView extends LitElement {
         }
 
         Object.values(this.lineCopyTimeouts).forEach(timeout => clearTimeout(timeout));
-        
+
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
             ipcRenderer.removeListener('add-ask-response', this.handleAddAskResponse);
@@ -734,20 +797,152 @@ export class AskView extends LitElement {
             ipcRenderer.removeListener('clear-ask-response', () => {});
             ipcRenderer.removeListener('hide-text-input', () => {});
             ipcRenderer.removeListener('window-hide-animation', () => {});
+            ipcRenderer.removeListener('window-blur', this.handleWindowBlur);
+
+            ipcRenderer.removeListener('ask-response-chunk', this.handleStreamChunk);
+            ipcRenderer.removeListener('ask-response-stream-end', this.handleStreamEnd);
             console.log('✅ AskView: IPC 이벤트 리스너 제거 완료');
+        }
+    }
+
+    // --- 스트리밍 처리 핸들러 ---
+    handleStreamChunk(event, { token }) {
+        if (!this.isStreaming) {
+            this.isStreaming = true;
+            this.isLoading = false;
+            this.accumulatedResponse = '';
+            const container = this.shadowRoot.getElementById('responseContainer');
+            if (container) container.innerHTML = '';
+            this.headerText = 'AI Response';
+            this.headerAnimating = false;
+            this.requestUpdate();
+        }
+        this.accumulatedResponse += token;
+        this.renderContent();
+    }
+
+    handleStreamEnd() {
+        this.isStreaming = false;
+        this.currentResponse = this.accumulatedResponse;
+        if (this.headerText !== 'AI Response') {
+            this.headerText = 'AI Response';
+            this.requestUpdate();
+        }
+        this.renderContent();
+    }
+
+    // ✨ 렌더링 로직 통합
+    renderContent() {
+        if (!this.isLoading && !this.isStreaming && !this.currentResponse) {
+            const responseContainer = this.shadowRoot.getElementById('responseContainer');
+            if (responseContainer) responseContainer.innerHTML = '<div class="empty-state">Ask a question to see the response here</div>';
+            return;
+        }
+
+        const responseContainer = this.shadowRoot.getElementById('responseContainer');
+        if (!responseContainer) return;
+
+        if (this.isLoading) {
+            responseContainer.innerHTML = `
+                <div class="loading-dots">
+                    <div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>
+                </div>`;
+            return;
+        }
+
+        let textToRender = this.isStreaming ? this.accumulatedResponse : this.currentResponse;
+
+        // 불완전한 마크다운 수정
+        textToRender = this.fixIncompleteMarkdown(textToRender);
+        textToRender = this.fixIncompleteCodeBlocks(textToRender);
+
+        if (this.isLibrariesLoaded && this.marked && this.DOMPurify) {
+            try {
+                // 마크다운 파싱
+                const parsedHtml = this.marked.parse(textToRender);
+
+                // DOMPurify로 정제
+                const cleanHtml = this.DOMPurify.sanitize(parsedHtml, {
+                    ALLOWED_TAGS: [
+                        'h1',
+                        'h2',
+                        'h3',
+                        'h4',
+                        'h5',
+                        'h6',
+                        'p',
+                        'br',
+                        'strong',
+                        'b',
+                        'em',
+                        'i',
+                        'ul',
+                        'ol',
+                        'li',
+                        'blockquote',
+                        'code',
+                        'pre',
+                        'a',
+                        'img',
+                        'table',
+                        'thead',
+                        'tbody',
+                        'tr',
+                        'th',
+                        'td',
+                        'hr',
+                        'sup',
+                        'sub',
+                        'del',
+                        'ins',
+                    ],
+                    ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'target', 'rel'],
+                });
+
+                // HTML 적용
+                responseContainer.innerHTML = cleanHtml;
+
+                // 코드 하이라이팅 적용
+                if (this.hljs) {
+                    responseContainer.querySelectorAll('pre code').forEach(block => {
+                        this.hljs.highlightElement(block);
+                    });
+                }
+
+                // 스크롤을 맨 아래로
+                responseContainer.scrollTop = responseContainer.scrollHeight;
+            } catch (error) {
+                console.error('Error rendering markdown:', error);
+                // 에러 발생 시 일반 텍스트로 표시
+                responseContainer.textContent = textToRender;
+            }
+        } else {
+            // 라이브러리가 로드되지 않았을 때 기본 렌더링
+            const basicHtml = textToRender
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            responseContainer.innerHTML = `<p>${basicHtml}</p>`;
         }
     }
 
     clearResponseContent() {
         this.currentResponse = '';
         this.currentQuestion = '';
-        this.streamedResponse = '';
+        // this.streamedResponse = ''; // 더 이상 필요 없는 속성
         this.isLoading = false;
         this.isStreaming = false;
         this.headerText = 'AI Response';
         this.showTextInput = true;
-        this.updateResponseContent();
+        this.accumulatedResponse = '';
         this.requestUpdate();
+        this.renderContent(); // 👈 updateResponseContent() 대신 renderContent() 호출
     }
 
     handleToggleTextInput() {
@@ -765,7 +960,7 @@ export class AskView extends LitElement {
     animateHeaderText(text) {
         this.headerAnimating = true;
         this.requestUpdate();
-        
+
         setTimeout(() => {
             this.headerText = text;
             this.headerAnimating = false;
@@ -775,50 +970,14 @@ export class AskView extends LitElement {
 
     startHeaderAnimation() {
         this.animateHeaderText('analyzing screen...');
-        
+
         if (this.headerAnimationTimeout) {
             clearTimeout(this.headerAnimationTimeout);
         }
-        
+
         this.headerAnimationTimeout = setTimeout(() => {
             this.animateHeaderText('thinking...');
         }, 1500);
-    }
-
-    simulateStreaming(text) {
-        this.isStreaming = true;
-        this.streamedResponse = '';
-        this.isLoading = true;
-        this.accumulatedChunks = '';
-        this.lastSafeContent = '';
-        let index = 0;
-        this.requestUpdate();
-
-        this.initializeStreamingContainer();
-
-        const streamNext = () => {
-            if (index < text.length) {
-                if (index === 0) this.isLoading = false;
-                
-                const chunk = text[index];
-                this.streamedResponse += chunk;
-                this.accumulatedChunks += chunk;
-                
-                this.updateStreamedContentSafe(chunk);
-                
-                index++;
-                this.streamingTimeout = setTimeout(streamNext, 20);
-            } else {
-                this.isStreaming = false;
-                this.isLoading = false;
-                this.currentResponse = text;
-                this.headerText = 'AI Response';
-                this.updateResponseContent();
-                this.requestUpdate();
-            }
-        };
-        
-        streamNext();
     }
 
     initializeStreamingContainer() {
@@ -835,7 +994,7 @@ export class AskView extends LitElement {
         if (this.isDOMPurifyLoaded && this.DOMPurify) {
             const testContent = this.fixIncompleteCodeBlocks(this.accumulatedChunks);
             const sanitized = this.DOMPurify.sanitize(testContent);
-            
+
             if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
                 console.warn('Unsafe content detected, stopping stream');
                 this.isStreaming = false;
@@ -853,13 +1012,13 @@ export class AskView extends LitElement {
         if (!this.streamingContainer) return;
 
         const processedResponse = this.fixIncompleteCodeBlocks(this.accumulatedChunks);
-        
+
         if (this.isDOMPurifyLoaded && this.DOMPurify) {
             const sanitized = this.DOMPurify.sanitize(this.renderMarkdown(processedResponse));
-            
+
             const tempContainer = document.createElement('div');
             tempContainer.innerHTML = sanitized;
-            
+
             if (this.streamingContainer.innerHTML !== tempContainer.innerHTML) {
                 this.streamingContainer.innerHTML = tempContainer.innerHTML;
             }
@@ -869,105 +1028,46 @@ export class AskView extends LitElement {
                 this.streamingContainer.innerHTML = rendered;
             }
         }
-        
+
         this.lastSafeContent = processedResponse;
     }
 
     updateStreamedContent() {
-        if (this.isStreaming) {
-            this.renderStreamingChunk();
+        if (!this.isStreaming && !this.currentResponse) return;
+
+        const responseContainer = this.shadowRoot.getElementById('responseContainer');
+        if (!responseContainer) return;
+
+        // 텍스트 깨짐 방지를 위해, 불완전한 코드 블록은 닫아주고 렌더링
+        let textToRender = this.isStreaming ? this.accumulatedResponse : this.currentResponse;
+        textToRender = this.fixIncompleteCodeBlocks(textToRender);
+
+        if (this.isLibrariesLoaded && this.marked) {
+            // DOMPurify를 사용해 안전하게 렌더링
+            const dirtyHtml = this.parseMarkdown(textToRender);
+            const cleanHtml = this.DOMPurify ? this.DOMPurify.sanitize(dirtyHtml) : dirtyHtml;
+            responseContainer.innerHTML = cleanHtml;
+
+            // 스크롤을 맨 아래로 이동
+            responseContainer.scrollTop = responseContainer.scrollHeight;
         } else {
-        const responseContainer = this.shadowRoot?.getElementById('responseContainer');
-        if (responseContainer && this.streamedResponse) {
-                const processedResponse = this.fixIncompleteCodeBlocks(this.streamedResponse);
-                const lines = processedResponse.split('\n');
-            responseContainer.innerHTML = lines.map((line, index) => {
-                const renderedLine = this.renderMarkdown(line);
-                return `
-                    <div class="response-line" data-line-index="${index}">
-                        ${renderedLine || '&nbsp;'}
-                    </div>
-                `;
-            }).join('');
-            }
+            // 라이브러리 로드 전이면 일반 텍스트로 표시
+            responseContainer.textContent = textToRender;
         }
     }
 
     handleNewResponse(event, message) {
         this.currentResponse = message;
-        this.updateResponseContent();
         this.requestUpdate();
-    }
-
-    updateResponseContent() {
-        const responseContainer = this.shadowRoot?.getElementById('responseContainer');
-        if (responseContainer) {
-            if (this.currentResponse) {
-                const processedResponse = this.fixIncompleteCodeBlocks(this.currentResponse);
-                
-                let safeContent = processedResponse;
-                if (this.isDOMPurifyLoaded && this.DOMPurify) {
-                    const fullRendered = this.renderMarkdown(processedResponse);
-                    const sanitized = this.DOMPurify.sanitize(fullRendered);
-                    
-                    if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
-                        console.warn('Unsafe content detected in final response');
-                        responseContainer.innerHTML = '<div class="response-line">⚠️ Content blocked for security reasons</div>';
-                        return;
-                    }
-                }
-                
-                const lines = processedResponse.split('\n');
-                responseContainer.innerHTML = lines.map((line, index) => {
-                    let renderedLine = this.renderMarkdown(line);
-                    
-                    if (this.isDOMPurifyLoaded && this.DOMPurify) {
-                        renderedLine = this.DOMPurify.sanitize(renderedLine);
-                    }
-                    
-                    return `
-                        <div class="response-line" data-line-index="${index}">
-                            <button class="line-copy-button ${this.lineCopyState[index] ? 'copied' : ''}" 
-                                    data-line-index="${index}">
-                                ${this.lineCopyState[index] 
-                                    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>'
-                                    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>'
-                                }
-                            </button>
-                            ${renderedLine || '&nbsp;'}
-                        </div>
-                    `;
-                }).join('');
-
-                const copyButtons = responseContainer.querySelectorAll('.line-copy-button');
-                copyButtons.forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const lineIndex = parseInt(button.getAttribute('data-line-index'));
-                        this.handleLineCopy(lineIndex);
-                    });
-                });
-            } else if (this.isLoading && this.streamedResponse === '') {
-                responseContainer.innerHTML = `
-                    <div class="loading-dots">
-                        <div class="loading-dot"></div>
-                        <div class="loading-dot"></div>
-                        <div class="loading-dot"></div>
-                    </div>
-                `;
-            } else if (!this.isLoading && !this.isStreaming && !this.currentResponse) {
-                responseContainer.innerHTML = '<div class="empty-state">Ask a question to see the response here</div>';
-            }
-        }
     }
 
     renderMarkdown(content) {
         if (!content) return '';
-        
+
         if (this.isLibrariesLoaded && this.marked) {
             return this.parseMarkdown(content);
         }
-        
+
         return content
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -981,39 +1081,73 @@ export class AskView extends LitElement {
         }
     }
 
-    async processAssistantQuestion(question) {
-        if (window.pickleGlass && window.pickleGlass.sendMessage) {
-            try {
-                const result = await window.pickleGlass.sendMessage(question, { hideTextInput: false });
-                if (result.success) {
-                    this.simulateStreaming(result.response);
-                } else {
-                    this.isLoading = false;
-                    this.currentResponse = result.response || `Error: ${result.error}`;
-                    this.headerText = 'AI Response';
-                    this.updateResponseContent();
-                    this.requestUpdate();
-                }
-            } catch (error) {
-                console.error('Error processing assistant question:', error);
-                this.isLoading = false;
-                this.currentResponse = `Error: ${error.message}`;
-                this.headerText = 'AI Response';
-                this.updateResponseContent();
-                this.requestUpdate();
-            }
+    fixIncompleteMarkdown(text) {
+        if (!text) return text;
+
+        // 불완전한 볼드체 처리
+        const boldCount = (text.match(/\*\*/g) || []).length;
+        if (boldCount % 2 === 1) {
+            text += '**';
         }
+
+        // 불완전한 이탤릭체 처리
+        const italicCount = (text.match(/(?<!\*)\*(?!\*)/g) || []).length;
+        if (italicCount % 2 === 1) {
+            text += '*';
+        }
+
+        // 불완전한 인라인 코드 처리
+        const inlineCodeCount = (text.match(/`/g) || []).length;
+        if (inlineCodeCount % 2 === 1) {
+            text += '`';
+        }
+
+        // 불완전한 링크 처리
+        const openBrackets = (text.match(/\[/g) || []).length;
+        const closeBrackets = (text.match(/\]/g) || []).length;
+        if (openBrackets > closeBrackets) {
+            text += ']';
+        }
+
+        const openParens = (text.match(/\]\(/g) || []).length;
+        const closeParens = (text.match(/\)\s*$/g) || []).length;
+        if (openParens > closeParens && text.endsWith('(')) {
+            text += ')';
+        }
+
+        return text;
+    }
+
+    // ✨ processAssistantQuestion 수정
+    async processAssistantQuestion(question) {
+        this.currentQuestion = question;
+        this.showTextInput = false;
+        this.isLoading = true;
+        this.isStreaming = false;
+        this.currentResponse = '';
+        this.accumulatedResponse = '';
+        this.startHeaderAnimation();
+        this.requestUpdate();
+        this.renderContent();
+
+        window.pickleGlass.sendMessage(question).catch(error => {
+            console.error('Error processing assistant question:', error);
+            this.isLoading = false;
+            this.isStreaming = false;
+            this.currentResponse = `Error: ${error.message}`;
+            this.renderContent();
+        });
     }
 
     async handleCopy() {
         if (this.copyState === 'copied') return;
 
         let responseToCopy = this.currentResponse;
-        
+
         if (this.isDOMPurifyLoaded && this.DOMPurify) {
             const testHtml = this.renderMarkdown(responseToCopy);
             const sanitized = this.DOMPurify.sanitize(testHtml);
-            
+
             if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
                 console.warn('Unsafe content detected, copy blocked');
                 return;
@@ -1052,18 +1186,21 @@ export class AskView extends LitElement {
             await navigator.clipboard.writeText(lineToCopy);
             console.log('Line copied to clipboard');
 
+            // '복사됨' 상태로 UI 즉시 업데이트
             this.lineCopyState = { ...this.lineCopyState, [lineIndex]: true };
-            this.updateResponseContent();
+            this.requestUpdate(); // LitElement에 UI 업데이트 요청
 
-            if (this.lineCopyTimeouts[lineIndex]) {
+            // 기존 타임아웃이 있다면 초기화
+            if (this.lineCopyTimeouts && this.lineCopyTimeouts[lineIndex]) {
                 clearTimeout(this.lineCopyTimeouts[lineIndex]);
             }
 
+            // ✨ 수정된 타임아웃: 1.5초 후 '복사됨' 상태 해제
             this.lineCopyTimeouts[lineIndex] = setTimeout(() => {
-                const newState = { ...this.lineCopyState };
-                delete newState[lineIndex];
-                this.lineCopyState = newState;
-                this.updateResponseContent();
+                const updatedState = { ...this.lineCopyState };
+                delete updatedState[lineIndex];
+                this.lineCopyState = updatedState;
+                this.requestUpdate(); // UI 업데이트 요청
             }, 1500);
         } catch (err) {
             console.error('Failed to copy line:', err);
@@ -1073,48 +1210,29 @@ export class AskView extends LitElement {
     async handleSendText() {
         const textInput = this.shadowRoot?.getElementById('textInput');
         if (!textInput) return;
-    
         const text = textInput.value.trim();
         if (!text) return;
-    
+
         textInput.value = '';
-        
+
         this.currentQuestion = text;
         this.lineCopyState = {};
-        
         this.showTextInput = false;
-        this.requestUpdate();
-        
+        this.isLoading = true;
+        this.isStreaming = false;
+        this.currentResponse = '';
+        this.accumulatedResponse = '';
         this.startHeaderAnimation();
-        
-        if (window.pickleGlass && window.pickleGlass.sendMessage) {
-            this.isLoading = true;
-            this.requestUpdate();
-            
-            try {
-                const result = await window.pickleGlass.sendMessage(text);
-                if (result.success) {
-                    this.simulateStreaming(result.response);
-                } else {
-                    this.isLoading = false;
-                    this.currentResponse = result.response || `Error: ${result.error}`;
-                    this.headerText = 'AI Response';
-                    this.updateResponseContent();
-                    this.requestUpdate();
-                }
-            } catch (error) {
-                console.error('Error sending text:', error);
-                this.isLoading = false;
-                this.currentResponse = `Error: ${error.message}`;
-                this.headerText = 'AI Response';
-                this.updateResponseContent();
-                this.requestUpdate();
-            }
-        } else {
-            console.error('sendMessage function not available');
+        this.requestUpdate();
+        this.renderContent();
+
+        window.pickleGlass.sendMessage(text).catch(error => {
+            console.error('Error sending text:', error);
             this.isLoading = false;
-            this.requestUpdate();
-        }
+            this.isStreaming = false;
+            this.currentResponse = `Error: ${error.message}`;
+            this.renderContent();
+        });
     }
 
     handleTextKeydown(e) {
@@ -1129,10 +1247,10 @@ export class AskView extends LitElement {
 
     updated(changedProperties) {
         super.updated(changedProperties);
-        if (changedProperties.has('currentResponse') || 
-            changedProperties.has('streamedResponse') ||
-            changedProperties.has('isLibrariesLoaded')) {
-            this.updateResponseContent();
+        // ✨ lit-element의 리렌더링에 맡기고, 명시적인 호출은 핸들러에서 처리합니다.
+        // 또는 필요한 경우 renderContent()를 호출할 수 있습니다.
+        if (changedProperties.has('isLoading')) {
+            this.renderContent();
         }
     }
 
@@ -1153,6 +1271,25 @@ export class AskView extends LitElement {
         return question.substring(0, maxLength) + '...';
     }
 
+    handleInputFocus() {
+        this.isInputFocused = true;
+    }
+
+    handleInputBlur(e) {
+        this.isInputFocused = false;
+
+        // 잠시 후 포커스가 다른 곳으로 갔는지 확인
+        setTimeout(() => {
+            const activeElement = this.shadowRoot?.activeElement || document.activeElement;
+            const textInput = this.shadowRoot?.getElementById('textInput');
+
+            // 포커스가 AskView 내부가 아니고, 응답이 없는 경우
+            if (!this.currentResponse && !this.isLoading && !this.isStreaming && activeElement !== textInput && !this.isInputFocused) {
+                this.closeIfNoContent();
+            }
+        }, 200);
+    }
+
     render() {
         const hasResponse = this.isLoading || this.currentResponse || this.isStreaming;
 
@@ -1163,8 +1300,8 @@ export class AskView extends LitElement {
                     <div class="header-left">
                         <div class="response-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                                <path d="M8 12l2 2 4-4"/>
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                                <path d="M8 12l2 2 4-4" />
                             </svg>
                         </div>
                         <span class="response-label ${this.headerAnimating ? 'animating' : ''}">${this.headerText}</span>
@@ -1172,16 +1309,21 @@ export class AskView extends LitElement {
                     <div class="header-right">
                         <span class="question-text">${this.getTruncatedQuestion(this.currentQuestion)}</span>
                         <div class="header-controls">
-                            <button
-                                class="copy-button ${this.copyState === 'copied' ? 'copied' : ''}"
-                                @click=${this.handleCopy}
-                            >
+                            <button class="copy-button ${this.copyState === 'copied' ? 'copied' : ''}" @click=${this.handleCopy}>
                                 <svg class="copy-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                                     <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                                 </svg>
-                                <svg class="check-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                     <path d="M20 6L9 17l-5-5"/>
+                                <svg
+                                    class="check-icon"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.5"
+                                >
+                                    <path d="M20 6L9 17l-5-5" />
                                 </svg>
                             </button>
                             <button class="close-button" @click=${this.closeResponsePanel}>
@@ -1201,7 +1343,14 @@ export class AskView extends LitElement {
 
                 <!-- Text Input Container -->
                 <div class="text-input-container ${!hasResponse ? 'no-response' : ''} ${!this.showTextInput ? 'hidden' : ''}">
-                    <input type="text" id="textInput" placeholder="Ask about your screen or audio" @keydown=${this.handleTextKeydown} />
+                    <input
+                        type="text"
+                        id="textInput"
+                        placeholder="Ask about your screen or audio"
+                        @keydown=${this.handleTextKeydown}
+                        @focus=${this.handleInputFocus}
+                        @blur=${this.handleInputBlur}
+                    />
                 </div>
             </div>
         `;

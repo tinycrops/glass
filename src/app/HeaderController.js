@@ -3,20 +3,19 @@ import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithCredential, 
 
 import './AppHeader.js';
 import './ApiKeyHeader.js';
-    
+
 const firebaseConfig = {
-    apiKey: "AIzaSyAgtJrmsFWG1C7m9S55HyT1laICEzuUS2g",
-    authDomain: "pickle-3651a.firebaseapp.com",
-    projectId: "pickle-3651a",
-    storageBucket: "pickle-3651a.firebasestorage.app",
-    messagingSenderId: "904706892885",
-    appId: "1:904706892885:web:0e42b3dda796674ead20dc",
-    measurementId: "G-SQ0WM6S28T"
+    apiKey: 'AIzaSyAgtJrmsFWG1C7m9S55HyT1laICEzuUS2g',
+    authDomain: 'pickle-3651a.firebaseapp.com',
+    projectId: 'pickle-3651a',
+    storageBucket: 'pickle-3651a.firebasestorage.app',
+    messagingSenderId: '904706892885',
+    appId: '1:904706892885:web:0e42b3dda796674ead20dc',
+    measurementId: 'G-SQ0WM6S28T',
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
-
 
 class HeaderTransitionManager {
     constructor() {
@@ -24,18 +23,22 @@ class HeaderTransitionManager {
         this.appHeader = document.getElementById('app-header');
         this.isInitialized = false;
         this.hasApiKey = false;
+        this.notifyHeaderState();
 
         console.log('[HeaderController] Manager initialized');
 
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
-            ipcRenderer.invoke('get-current-api-key').then(storedKey => {
-                this.hasApiKey = !!storedKey;
-                if (this.hasApiKey && !auth.currentUser) {
-                    console.log('[HeaderController] Stored API key detected. Skipping ApiKeyHeader.');
-                    this.transitionToAppHeader(false);
-                }
-            }).catch(() => {});
+            ipcRenderer
+                .invoke('get-current-api-key')
+                .then(storedKey => {
+                    this.hasApiKey = !!storedKey;
+                    if (this.hasApiKey && !auth.currentUser) {
+                        console.log('[HeaderController] Stored API key detected. Skipping ApiKeyHeader.');
+                        this.transitionToAppHeader(false);
+                    }
+                })
+                .catch(() => {});
         }
 
         if (window.require) {
@@ -111,12 +114,12 @@ class HeaderTransitionManager {
             });
         }
 
-        onAuthStateChanged(auth, async (user) => {
+        onAuthStateChanged(auth, async user => {
             console.log('[HeaderController] Auth state changed. User:', user ? user.email : 'null');
 
             if (window.require) {
                 const { ipcRenderer } = window.require('electron');
-                
+
                 let userDataWithToken = null;
                 if (user) {
                     try {
@@ -126,7 +129,7 @@ class HeaderTransitionManager {
                             email: user.email,
                             name: user.displayName,
                             photoURL: user.photoURL,
-                            idToken: idToken
+                            idToken: idToken,
                         };
                     } catch (error) {
                         console.error('[HeaderController] Failed to get ID token:', error);
@@ -135,11 +138,11 @@ class HeaderTransitionManager {
                             email: user.email,
                             name: user.displayName,
                             photoURL: user.photoURL,
-                            idToken: null
+                            idToken: null,
                         };
                     }
                 }
-                
+
                 ipcRenderer.invoke('firebase-auth-state-changed', userDataWithToken).catch(console.error);
             }
 
@@ -160,20 +163,36 @@ class HeaderTransitionManager {
         });
     }
 
+    notifyHeaderState() {
+        if (window.require) {
+            const { ipcRenderer } = window.require('electron');
+            const isApiKeyVisible =
+                this.apiKeyHeader && this.apiKeyHeader.style.display !== 'none' && !this.apiKeyHeader.classList.contains('hidden');
+            const state = isApiKeyVisible ? 'apikey' : 'app';
+
+            ipcRenderer.send('header-state-changed', state);
+            console.log(`[HeaderController] Notified header state: ${state}`);
+        }
+    }
+
     async transitionToAppHeader(animate = true) {
         console.log(`[HeaderController] Transitioning to AppHeader (animate: ${animate})`);
         const isApiKeyVisible = this.apiKeyHeader.style.display !== 'none' && !this.apiKeyHeader.classList.contains('hidden');
 
         if (animate && isApiKeyVisible) {
             this.apiKeyHeader.startSlideOutAnimation();
-            this.apiKeyHeader.addEventListener('animationend', () => {
-                this.showAppHeader();
-            }, { once: true });
+            this.apiKeyHeader.addEventListener(
+                'animationend',
+                () => {
+                    this.showAppHeader();
+                },
+                { once: true }
+            );
         } else {
             this.showAppHeader();
         }
     }
-    
+
     async showAppHeader() {
         try {
             if (window.require) {
@@ -184,16 +203,18 @@ class HeaderTransitionManager {
                     console.warn('[HeaderController] Window resize failed:', resizeError);
                 }
             }
-            
+
             this.apiKeyHeader.style.display = 'none';
             this.appHeader.style.display = 'block';
-            
+
             if (this.appHeader.startSlideInAnimation) {
                 this.appHeader.startSlideInAnimation();
             } else {
                 this.appHeader.classList.remove('hidden');
             }
-            
+
+            this.notifyHeaderState();
+
             console.log('[HeaderController] AppHeader displayed successfully');
         } catch (error) {
             console.error('[HeaderController] Error in showAppHeader:', error);
@@ -208,9 +229,10 @@ class HeaderTransitionManager {
         this.appHeader.style.display = 'none';
         this.apiKeyHeader.style.display = 'block';
         this.apiKeyHeader.reset();
+        this.notifyHeaderState();
     }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
     new HeaderTransitionManager();
-}); 
+});

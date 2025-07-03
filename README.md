@@ -98,4 +98,5 @@ We love contributions! Feel free to open issues for bugs or feature requests.
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=pickle-com/glass&type=Date)](https://www.star-history.com/#pickle-com/glass&Date)
+<iframe style="width:100%;height:auto;min-width:600px;min-height:400px;" src="https://www.star-history.com/embed?secret=Z2hwX0hYSTNWTkx0M2ZGYjRuUk9GU2xoenZ2eFQ5Z1NIVTBGSkZWZA==#pickle-com/glass&Date" frameBorder="0"></iframe>
+

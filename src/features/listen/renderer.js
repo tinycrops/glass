@@ -186,30 +186,28 @@ Make sure to **reference context** fully if it is provided (ex. if all/the entir
 
 {{CONVERSATION_HISTORY}}`;
 
-
 function base64ToFloat32Array(base64) {
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
-    
+
     for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
     }
-    
+
     const int16Array = new Int16Array(bytes.buffer);
     const float32Array = new Float32Array(int16Array.length);
-    
+
     for (let i = 0; i < int16Array.length; i++) {
         float32Array[i] = int16Array[i] / 32768.0;
     }
-    
+
     return float32Array;
 }
-
 
 async function queryLoginState() {
     const user = await ipcRenderer.invoke('get-current-firebase-user');
     return { user, isLoggedIn: !!user };
-  }
+}
 
 class SimpleAEC {
     constructor() {
@@ -218,25 +216,25 @@ class SimpleAEC {
         this.echoDelay = 100;
         this.sampleRate = 24000;
         this.delaySamples = Math.floor((this.echoDelay / 1000) * this.sampleRate);
-        
+
         this.echoGain = 0.5;
         this.noiseFloor = 0.01;
-        
+
         console.log('🎯 Weakened AEC initialized');
     }
-    
+
     process(micData, systemData) {
         if (!systemData || systemData.length === 0) {
             return micData;
         }
-        
+
         const output = new Float32Array(micData.length);
-        
+
         const optimalDelay = this.findOptimalDelay(micData, systemData);
-        
+
         for (let i = 0; i < micData.length; i++) {
             let echoEstimate = 0;
-            
+
             for (let d = -500; d <= 500; d += 100) {
                 const delayIndex = i - optimalDelay - d;
                 if (delayIndex >= 0 && delayIndex < systemData.length) {
@@ -244,38 +242,38 @@ class SimpleAEC {
                     echoEstimate += systemData[delayIndex] * this.echoGain * weight;
                 }
             }
-            
-            output[i] = micData[i] - (echoEstimate * 0.5);
-            
+
+            output[i] = micData[i] - echoEstimate * 0.5;
+
             if (Math.abs(output[i]) < this.noiseFloor) {
                 output[i] *= 0.5;
             }
-            
+
             if (this.isSimilarToSystem(output[i], systemData, i, optimalDelay)) {
                 output[i] *= 0.5;
             }
-            
+
             output[i] = Math.max(-1, Math.min(1, output[i]));
         }
-        
+
         return output;
     }
-    
+
     findOptimalDelay(micData, systemData) {
         let maxCorr = 0;
         let optimalDelay = this.delaySamples;
-        
+
         for (let delay = 0; delay < 5000 && delay < systemData.length; delay += 200) {
             let corr = 0;
             let count = 0;
-            
+
             for (let i = 0; i < Math.min(500, micData.length); i++) {
                 if (i + delay < systemData.length) {
                     corr += micData[i] * systemData[i + delay];
                     count++;
                 }
             }
-            
+
             if (count > 0) {
                 corr = Math.abs(corr / count);
                 if (corr > maxCorr) {
@@ -284,25 +282,24 @@ class SimpleAEC {
                 }
             }
         }
-        
+
         return optimalDelay;
     }
 
     isSimilarToSystem(sample, systemData, index, delay) {
         const windowSize = 50;
         let similarity = 0;
-        
+
         for (let i = -windowSize; i <= windowSize; i++) {
             const sysIndex = index - delay + i;
             if (sysIndex >= 0 && sysIndex < systemData.length) {
                 similarity += Math.abs(sample - systemData[sysIndex]);
             }
         }
-        
+
         return similarity / (2 * windowSize + 1) < 0.2;
     }
 }
-
 
 let aecProcessor = new SimpleAEC();
 
@@ -331,7 +328,7 @@ let tokenTracker = {
         if (pixels <= 384 * 384) {
             return 85;
         }
-        
+
         const tiles = Math.ceil(pixels / (768 * 768));
         return tiles * 85;
     },
@@ -446,14 +443,14 @@ ipcRenderer.on('system-audio-data', (event, { data }) => {
     // 시스템 오디오를 버퍼에 저장
     systemAudioBuffer.push({
         data: data,
-        timestamp: Date.now()
+        timestamp: Date.now(),
     });
-    
+
     // 오래된 데이터 제거
     if (systemAudioBuffer.length > MAX_SYSTEM_BUFFER_SIZE) {
         systemAudioBuffer = systemAudioBuffer.slice(-MAX_SYSTEM_BUFFER_SIZE);
     }
-    
+
     console.log('📥 Received system audio for AEC reference');
 });
 
@@ -467,32 +464,32 @@ ipcRenderer.on('update-status', (event, status) => {
 ipcRenderer.on('stt-update', (event, data) => {
     console.log('Renderer.js stt-update', data);
     const { speaker, text, isFinal, isPartial, timestamp } = data;
-    
+
     if (isPartial) {
         console.log(`🔄 [${speaker} - partial]: ${text}`);
     } else if (isFinal) {
         console.log(`✅ [${speaker} - final]: ${text}`);
-        
+
         const speakerText = speaker.toLowerCase();
         const conversationText = `${speakerText}: ${text.trim()}`;
-        
+
         realtimeConversationHistory.push(conversationText);
-        
+
         if (realtimeConversationHistory.length > 30) {
             realtimeConversationHistory = realtimeConversationHistory.slice(-30);
         }
-        
+
         console.log(`📝 Updated realtime conversation history: ${realtimeConversationHistory.length} texts`);
         console.log(`📋 Latest text: ${conversationText}`);
     }
-    
+
     if (pickleGlass.e() && typeof pickleGlass.e().updateRealtimeTranscription === 'function') {
         pickleGlass.e().updateRealtimeTranscription({
             speaker,
             text,
             isFinal,
             isPartial,
-            timestamp
+            timestamp,
         });
     }
 });
@@ -524,14 +521,12 @@ ipcRenderer.on('update-structured-data', (_, structuredData) => {
 window.pickleGlass.structuredData = {
     summary: [],
     topic: { header: '', bullets: [] },
-    actions: []
+    actions: [],
 };
 window.pickleGlass.setStructuredData = data => {
     window.pickleGlass.structuredData = data;
     pickleGlass.e()?.updateStructuredData?.(data);
 };
-
-
 
 async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'medium') {
     // Store the image quality for manual screenshots
@@ -721,20 +716,17 @@ function setupMicProcessing(micStream) {
 
         while (audioBuffer.length >= samplesPerChunk) {
             let chunk = audioBuffer.splice(0, samplesPerChunk);
-            
+
             if (aecProcessor && systemAudioBuffer.length > 0) {
                 const latestSystemAudio = systemAudioBuffer[systemAudioBuffer.length - 1];
                 const systemFloat32 = base64ToFloat32Array(latestSystemAudio.data);
-                
-                const processedChunk = aecProcessor.process(
-                    new Float32Array(chunk),
-                    systemFloat32
-                );
-                
+
+                const processedChunk = aecProcessor.process(new Float32Array(chunk), systemFloat32);
+
                 chunk = Array.from(processedChunk);
                 console.log('🔊 Applied AEC processing to mic audio');
             }
-            
+
             const pcmData16 = convertFloat32ToInt16(chunk);
             const base64Data = arrayBufferToBase64(pcmData16.buffer);
 
@@ -827,7 +819,7 @@ async function captureScreenshot(imageQuality = 'medium', isManual = false) {
     try {
         // Request screenshot from main process
         const result = await ipcRenderer.invoke('capture-screenshot', {
-            quality: imageQuality
+            quality: imageQuality,
         });
 
         if (result.success && result.base64) {
@@ -898,7 +890,6 @@ function stopCapture() {
     }
 }
 
-
 // Listen for screenshot updates from main process
 ipcRenderer.on('screenshot-update', (event, { base64, width, height }) => {
     lastScreenshotBase64 = base64;
@@ -909,18 +900,18 @@ async function getCurrentScreenshot() {
     try {
         // First try to get a fresh screenshot from main process
         const result = await ipcRenderer.invoke('get-current-screenshot');
-        
+
         if (result.success && result.base64) {
             console.log('📸 Got fresh screenshot from main process');
             return result.base64;
         }
-        
+
         // If no screenshot available, capture one now
         console.log('📸 No screenshot available, capturing new one');
         const captureResult = await ipcRenderer.invoke('capture-screenshot', {
-            quality: currentImageQuality
+            quality: currentImageQuality,
         });
-        
+
         if (captureResult.success && captureResult.base64) {
             lastScreenshotBase64 = captureResult.base64;
             return captureResult.base64;
@@ -931,7 +922,7 @@ async function getCurrentScreenshot() {
             console.log('📸 Using cached screenshot');
             return lastScreenshotBase64;
         }
-        
+
         throw new Error('Failed to get screenshot');
     } catch (error) {
         console.error('Error getting current screenshot:', error);
@@ -941,10 +932,8 @@ async function getCurrentScreenshot() {
 
 function formatRealtimeConversationHistory() {
     if (realtimeConversationHistory.length === 0) return 'No conversation history available.';
-    
-    return realtimeConversationHistory
-        .slice(-30)
-        .join('\n');
+
+    return realtimeConversationHistory.slice(-30).join('\n');
 }
 
 async function sendMessage(userPrompt, options = {}) {
@@ -964,7 +953,7 @@ async function sendMessage(userPrompt, options = {}) {
 
     try {
         console.log(`🤖 Processing message: ${userPrompt.substring(0, 50)}...`);
-        
+
         // 1. Get screenshot from main process
         let screenshotBase64 = null;
         try {
@@ -977,14 +966,14 @@ async function sendMessage(userPrompt, options = {}) {
         } catch (error) {
             console.warn('Failed to get screenshot:', error);
         }
-        
+
         const conversationHistory = formatRealtimeConversationHistory();
         console.log(`📝 Using conversation history: ${realtimeConversationHistory.length} texts`);
-        
+
         const systemPrompt = PICKLE_GLASS_SYSTEM_PROMPT.replace('{{CONVERSATION_HISTORY}}', conversationHistory);
-        
+
         let API_KEY = localStorage.getItem('openai_api_key');
-        
+
         if (!API_KEY && window.require) {
             try {
                 const { ipcRenderer } = window.require('electron');
@@ -993,39 +982,39 @@ async function sendMessage(userPrompt, options = {}) {
                 console.error('Failed to get API key via IPC:', error);
             }
         }
-        
+
         if (!API_KEY) {
-            API_KEY = process.env.OPENAI_API_KEY
+            API_KEY = process.env.OPENAI_API_KEY;
         }
-        
+
         if (!API_KEY) {
             throw new Error('No API key found in storage, IPC, or environment');
         }
-        
+
         console.log('[Renderer] Using API key for message request');
-        
+
         const messages = [
             {
                 role: 'system',
-                content: systemPrompt
+                content: systemPrompt,
             },
             {
                 role: 'user',
                 content: [
                     {
                         type: 'text',
-                        text: `User Request: ${userPrompt.trim()}`
-                    }
-                ]
-            }
+                        text: `User Request: ${userPrompt.trim()}`,
+                    },
+                ],
+            },
         ];
-        
+
         if (screenshotBase64) {
             messages[1].content.push({
                 type: 'image_url',
                 image_url: {
-                    url: `data:image/jpeg;base64,${screenshotBase64}`
-                }
+                    url: `data:image/jpeg;base64,${screenshotBase64}`,
+                },
             });
             console.log('📷 Screenshot included in message request');
         }
@@ -1034,45 +1023,83 @@ async function sendMessage(userPrompt, options = {}) {
         const keyType = isLoggedIn ? 'vKey' : 'apiKey';
 
         console.log('🚀 Sending request to OpenAI...');
-        const { url, headers } = keyType === 'apiKey'
-            ? {
-                url: 'https://api.openai.com/v1/chat/completions',
-                headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' }
-            }
-            : {
-                url: 'https://api.portkey.ai/v1/chat/completions',
-                headers: { 'x-portkey-api-key': 'gRv2UGRMq6GGLJ8aVEB4e7adIewu',
-                            'x-portkey-virtual-key': API_KEY,
-                            'Content-Type': 'application/json' }
-            };
+        const { url, headers } =
+            keyType === 'apiKey'
+                ? {
+                      url: 'https://api.openai.com/v1/chat/completions',
+                      headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+                  }
+                : {
+                      url: 'https://api.portkey.ai/v1/chat/completions',
+                      headers: {
+                          'x-portkey-api-key': 'gRv2UGRMq6GGLJ8aVEB4e7adIewu',
+                          'x-portkey-virtual-key': API_KEY,
+                          'Content-Type': 'application/json',
+                      },
+                  };
 
         const response = await fetch(url, {
-            method : 'POST',
+            method: 'POST',
             headers,
-                body   : JSON.stringify({
-                    model: 'gpt-4.1',
-                    messages,
-                    temperature: 0.7,
-                    max_tokens : 2048
-                })
-            });
+            body: JSON.stringify({
+                model: 'gpt-4.1',
+                messages,
+                temperature: 0.7,
+                max_tokens: 2048,
+                stream: true,
+            }),
+        });
 
-        
         if (!response.ok) {
             throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
         }
-        
-        const result = await response.json();
-        const responseText = result.choices[0].message.content;
-        
-        console.log('✅ Message response received');
-        
-        return { success: true, response: responseText };
-        
+
+        // --- 스트리밍 응답 처리 ---
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullResponse = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.substring(6);
+                    if (data === '[DONE]') {
+                        // 스트리밍 종료 신호
+                        if (window.require) {
+                            const { ipcRenderer } = window.require('electron');
+                            ipcRenderer.send('ask-response-stream-end');
+                        }
+                        return { success: true, response: fullResponse };
+                    }
+                    try {
+                        const json = JSON.parse(data);
+                        const token = json.choices[0]?.delta?.content || '';
+                        if (token) {
+                            fullResponse += token;
+                            // 💡 렌더러 프로세스에 토큰 청크 전송
+                            if (window.require) {
+                                const { ipcRenderer } = window.require('electron');
+                                ipcRenderer.send('ask-response-chunk', { token });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error parsing stream data chunk:', error, 'Chunk:', data);
+                    }
+                }
+            }
+        }
+        // 이 부분은 스트리밍이 끝나면 사실상 도달하지 않음
+        return { success: true, response: fullResponse };
     } catch (error) {
         console.error('Error processing message:', error);
         const errorMessage = `Error: ${error.message}`;
-        
+
         return { success: false, error: error.message, response: errorMessage };
     }
 }
@@ -1083,14 +1110,14 @@ async function captureCurrentScreenshot() {
             reject(new Error('Canvas not initialized'));
             return;
         }
-        
+
         offscreenCanvas.toBlob(
-            async (blob) => {
+            async blob => {
                 if (!blob) {
                     reject(new Error('Failed to create screenshot blob'));
                     return;
                 }
-                
+
                 const reader = new FileReader();
                 reader.onloadend = () => {
                     const base64data = reader.result.split(',')[1];
@@ -1104,7 +1131,6 @@ async function captureCurrentScreenshot() {
         );
     });
 }
-
 
 const apiClient = window.require ? window.require('../common/services/apiClient') : undefined;
 
@@ -1124,13 +1150,13 @@ async function saveConversationSession(sessionId, conversationHistory) {
         if (!apiClient) {
             throw new Error('API client not available');
         }
-        
+
         const response = await apiClient.client.post('/api/conversations', {
             sessionId,
             conversationHistory,
-            userId: apiClient.userId
+            userId: apiClient.userId,
         });
-        
+
         console.log('대화 세션 저장 완료:', sessionId);
         return response.data;
     } catch (error) {
@@ -1144,7 +1170,7 @@ async function getConversationSession(sessionId) {
         if (!apiClient) {
             throw new Error('API client not available');
         }
-        
+
         const response = await apiClient.client.get(`/api/conversations/${sessionId}`);
         return response.data;
     } catch (error) {
@@ -1158,7 +1184,7 @@ async function getAllConversationSessions() {
         if (!apiClient) {
             throw new Error('API client not available');
         }
-        
+
         const response = await apiClient.client.get('/api/conversations');
         return response.data;
     } catch (error) {
@@ -1167,7 +1193,7 @@ async function getAllConversationSessions() {
     }
 }
 
-// Listen for conversation data from main process  
+// Listen for conversation data from main process
 ipcRenderer.on('save-conversation-turn', async (event, data) => {
     try {
         await saveConversationSession(data.sessionId, data.fullHistory);

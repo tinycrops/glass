@@ -7,23 +7,23 @@ const { connectToOpenAiSession, createOpenAiGenerativeClient, getOpenAiGenerativ
 const sqliteClient = require('../../common/services/sqliteClient');
 const dataService = require('../../common/services/dataService');
 
-const {isFirebaseLoggedIn,getCurrentFirebaseUser} = require('../../electron/windowManager.js');
+const { isFirebaseLoggedIn, getCurrentFirebaseUser } = require('../../electron/windowManager.js');
 
 function getApiKey() {
     const { getStoredApiKey } = require('../../electron/windowManager.js');
     const storedKey = getStoredApiKey();
-    
+
     if (storedKey) {
         console.log('[LiveSummaryService] Using stored API key');
         return storedKey;
     }
-    
-    const envKey = process.env.OPENAI_API_KEY
+
+    const envKey = process.env.OPENAI_API_KEY;
     if (envKey) {
         console.log('[LiveSummaryService] Using environment API key');
         return envKey;
     }
-    
+
     console.error('[LiveSummaryService] No API key found in storage or environment');
     return null;
 }
@@ -42,6 +42,9 @@ let theirLastPartialText = '';
 let myInactivityTimer = null;
 let theirInactivityTimer = null;
 const INACTIVITY_TIMEOUT = 3000;
+
+let previousAnalysisResult = null;
+let analysisHistory = [];
 
 // ---------------------------------------------------------------------------
 // 🎛️  Turn-completion debouncing
@@ -124,14 +127,11 @@ let analysisIntervalId = null;
  */
 function formatConversationForPrompt(conversationTexts, maxTurns = 30) {
     if (conversationTexts.length === 0) return '';
-    return conversationTexts
-        .slice(-maxTurns)
-        .join('\n');
+    return conversationTexts.slice(-maxTurns).join('\n');
 }
 
 async function makeOutlineAndRequests(conversationTexts, maxTurns = 30) {
     console.log(`🔍 makeOutlineAndRequests called - conversationTexts: ${conversationTexts.length}`);
-    
 
     if (conversationTexts.length === 0) {
         console.log('⚠️ No conversation texts available for analysis');
@@ -139,219 +139,228 @@ async function makeOutlineAndRequests(conversationTexts, maxTurns = 30) {
     }
 
     const recentConversation = formatConversationForPrompt(conversationTexts, maxTurns);
-    console.log(`📝 Recent conversation (${conversationTexts.length} texts):\n${recentConversation.substring(0, 200)}...`);
-    
+
+    // 이전 분석 결과를 프롬프트에 포함
+    let contextualPrompt = '';
+    if (previousAnalysisResult) {
+        contextualPrompt = `
+Previous Analysis Context:
+- Main Topic: ${previousAnalysisResult.topic.header}
+- Key Points: ${previousAnalysisResult.summary.slice(0, 3).join(', ')}
+- Last Actions: ${previousAnalysisResult.actions.slice(0, 2).join(', ')}
+
+Please build upon this context while analyzing the new conversation segments.
+`;
+    }
+
     const basePrompt = getSystemPrompt('pickle_glass_analysis', '', false);
     const systemPrompt = basePrompt.replace('{{CONVERSATION_HISTORY}}', recentConversation);
-    console.log(`📋 Generated system prompt with conversation history`);
 
     try {
         const messages = [
             {
                 role: 'system',
-                content: systemPrompt
+                content: systemPrompt,
             },
             {
                 role: 'user',
-                content: 'Analyze the conversation and provide a summary with key topics and suggested questions.'
-            }
+                content: `${contextualPrompt}
+
+Analyze the conversation and provide a structured summary. Format your response as follows:
+
+**Summary Overview**
+- Main discussion point with context
+
+**Key Topic: [Topic Name]**
+- First key insight
+- Second key insight
+- Third key insight
+
+**Extended Explanation**
+Provide 2-3 sentences explaining the context and implications.
+
+**Suggested Questions**
+1. First follow-up question?
+2. Second follow-up question?
+3. Third follow-up question?
+
+Keep all points concise and build upon previous analysis if provided.`,
+            },
         ];
-        
+
         console.log('🤖 Sending analysis request to OpenAI...');
-        
+
         const API_KEY = getApiKey();
         if (!API_KEY) {
             throw new Error('No API key available');
         }
-        const loggedIn = isFirebaseLoggedIn();          // true ➜ vKey, false ➜ apiKey
-        const keyType  = loggedIn ? 'vKey' : 'apiKey';
+        const loggedIn = isFirebaseLoggedIn(); // true ➜ vKey, false ➜ apiKey
+        const keyType = loggedIn ? 'vKey' : 'apiKey';
         console.log(`[LiveSummary] keyType: ${keyType}`);
-        
-        const fetchUrl = keyType === 'apiKey'
-            ? 'https://api.openai.com/v1/chat/completions'
-            : 'https://api.portkey.ai/v1/chat/completions';
-    
-        const headers  = keyType === 'apiKey'
-            ? {
-                    'Authorization': `Bearer ${API_KEY}`,
-                    'Content-Type' : 'application/json',
-                }
-            : {
-                    'x-portkey-api-key'   : 'gRv2UGRMq6GGLJ8aVEB4e7adIewu',
-                    'x-portkey-virtual-key': API_KEY,
-                    'Content-Type'        : 'application/json',
-                };
+
+        const fetchUrl = keyType === 'apiKey' ? 'https://api.openai.com/v1/chat/completions' : 'https://api.portkey.ai/v1/chat/completions';
+
+        const headers =
+            keyType === 'apiKey'
+                ? {
+                      Authorization: `Bearer ${API_KEY}`,
+                      'Content-Type': 'application/json',
+                  }
+                : {
+                      'x-portkey-api-key': 'gRv2UGRMq6GGLJ8aVEB4e7adIewu',
+                      'x-portkey-virtual-key': API_KEY,
+                      'Content-Type': 'application/json',
+                  };
 
         const response = await fetch(fetchUrl, {
-                method : 'POST',
-                headers,
-                body   : JSON.stringify({
-                    model       : 'gpt-4.1',
-                    messages,
-                    temperature : 0.7,
-                    max_tokens  : 1024
-                })
-            });
-        
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                model: 'gpt-4.1',
+                messages,
+                temperature: 0.7,
+                max_tokens: 1024,
+            }),
+        });
+
         if (!response.ok) {
             throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
         }
-        
+
         const result = await response.json();
         const responseText = result.choices[0].message.content.trim();
         console.log(`✅ Analysis response received: ${responseText}`);
+        const structuredData = parseResponseText(responseText, previousAnalysisResult);
 
-        // const parsedData = parseResponseText(responseText);
-        const structuredData = parseResponseText(responseText);
-        
-        if (currentSessionId) {
-            await sqliteClient.addAiMessage({
-                sessionId: currentSessionId,
-                role: 'user',
-                content: 'Analyze the conversation and provide a summary...' // Abridged
-            });
+        // 분석 결과 저장
+        previousAnalysisResult = structuredData;
+        analysisHistory.push({
+            timestamp: Date.now(),
+            data: structuredData,
+            conversationLength: conversationTexts.length,
+        });
 
-            await sqliteClient.addAiMessage({
-                sessionId: currentSessionId,
-                role: 'assistant',
-                content: responseText
-            });
-
-            await sqliteClient.saveSummary({
-                sessionId: currentSessionId,
-                tldr: structuredData.topic.header || 'Summary not available.',
-                text: responseText,
-                bullet_json: JSON.stringify(structuredData.summary),
-                action_json: JSON.stringify(structuredData.actions)
-            });
-            console.log(`[DB] Saved AI analysis and summary for session ${currentSessionId}`);
+        // 히스토리 크기 제한 (최근 10개만 유지)
+        if (analysisHistory.length > 10) {
+            analysisHistory.shift();
         }
 
         return structuredData;
-        
     } catch (error) {
         console.error('❌ Error during analysis generation:', error.message);
-        console.error('Full error details:', error);
-        if (error.response) {
-            console.error('API response error:', error.response);
-        }
-        return null;
+        return previousAnalysisResult; // 에러 시 이전 결과 반환
     }
 }
 
-
-/**
- * Parses AI's analysis response to extract structured summaries, key topics and action items.
- * This version first finds all bold headers to divide text into sections, then parses the content of each section.
- * Header tags (**...**) are removed from summary items.
- *
- * @param {string} responseText - Raw text response from AI.
- * @returns {{summary: string[], topic: {header: string, bullets: string[]}, actions: string[]}} - Structured data.
- */
-function parseResponseText(responseText) {
+function parseResponseText(responseText, previousResult) {
     const structuredData = {
         summary: [],
         topic: { header: '', bullets: [] },
         actions: [],
-        followUps: []
+        followUps: ['✉️ Draft a follow-up email', '✅ Generate action items', '📝 Show summary'],
     };
+
+    // 이전 결과가 있으면 기본값으로 사용
+    if (previousResult) {
+        structuredData.topic.header = previousResult.topic.header;
+        structuredData.summary = [...previousResult.summary];
+    }
 
     try {
         const lines = responseText.split('\n');
-        const sections = [];
-        let currentSection = { header: 'Introduction', content: [] };
+        let currentSection = '';
+        let isCapturingTopic = false;
+        let topicName = '';
 
         for (const line of lines) {
-            const headerMatch = line.trim().match(/^\*\*(.*)\*\*$/);
-            
-            if (headerMatch && !line.trim().startsWith('-')) {
-                if (currentSection.header || currentSection.content.length > 0) {
-                    sections.push(currentSection);
+            const trimmedLine = line.trim();
+
+            // 섹션 헤더 감지
+            if (trimmedLine.startsWith('**Summary Overview**')) {
+                currentSection = 'summary-overview';
+                continue;
+            } else if (trimmedLine.startsWith('**Key Topic:')) {
+                currentSection = 'topic';
+                isCapturingTopic = true;
+                topicName = trimmedLine.match(/\*\*Key Topic: (.+?)\*\*/)?.[1] || '';
+                if (topicName) {
+                    structuredData.topic.header = topicName + ':';
                 }
-                currentSection = { header: headerMatch[1].trim(), content: [] };
-            } else {
-                currentSection.content.push(line);
+                continue;
+            } else if (trimmedLine.startsWith('**Extended Explanation**')) {
+                currentSection = 'explanation';
+                continue;
+            } else if (trimmedLine.startsWith('**Suggested Questions**')) {
+                currentSection = 'questions';
+                continue;
             }
-        }
-        sections.push(currentSection);
 
-        for (const section of sections) {
-            const headerText = section.header.toLowerCase().replace(/:$/, '').trim();
-            const contentText = section.content.join('\n');
-
-            const summaryKeywords = ['summary', 'key', 'topic', 'main', 'point', 'overview', 'headline'];
-            if (summaryKeywords.some(k => headerText.includes(k)) || headerText === 'introduction') {
-                const pointRegex = /^\s*[-\*]\s*\*\*(?<header>[^:]+):\*\*(?<description>(?:.|\n(?!\s*[-\*]))*)/gm;
-                const allPoints = [...contentText.matchAll(pointRegex)];
-
-                for (const match of allPoints) {
-                    const { header, description } = match.groups;
-                    
-                    if (!structuredData.topic.header) {
-                        structuredData.topic.header = `${header.trim()}:`;
-                        console.log('📌 Found main topic header:', structuredData.topic.header);
-                        if (description.trim()) {
-                            const topicBullets = description.trim().split('\n').map(l => l.trim()).filter(Boolean);
-                            structuredData.topic.bullets.push(...topicBullets);
-                            topicBullets.forEach(b => console.log('📌 Found topic bullet:', b));
-                        }
-                    } else { 
-                        const summaryDescription = description.trim().replace(/\s+/g, ' ');
-                        structuredData.summary.push(summaryDescription);
-                        console.log('📌 Found summary point:', summaryDescription);
+            // 컨텐츠 파싱
+            if (trimmedLine.startsWith('-') && currentSection === 'summary-overview') {
+                const summaryPoint = trimmedLine.substring(1).trim();
+                if (summaryPoint && !structuredData.summary.includes(summaryPoint)) {
+                    // 기존 summary 업데이트 (최대 5개 유지)
+                    structuredData.summary.unshift(summaryPoint);
+                    if (structuredData.summary.length > 5) {
+                        structuredData.summary.pop();
                     }
                 }
-            }
-
-            const explanationKeywords = ['extended', 'explanation'];
-            if (explanationKeywords.some(k => headerText.includes(k))) {
-                const sentences = contentText.trim().split(/\.\s+/)
+            } else if (trimmedLine.startsWith('-') && currentSection === 'topic') {
+                const bullet = trimmedLine.substring(1).trim();
+                if (bullet && structuredData.topic.bullets.length < 3) {
+                    structuredData.topic.bullets.push(bullet);
+                }
+            } else if (currentSection === 'explanation' && trimmedLine) {
+                // explanation을 topic bullets에 추가 (문장 단위로)
+                const sentences = trimmedLine
+                    .split(/\.\s+/)
                     .filter(s => s.trim().length > 0)
                     .map(s => s.trim() + (s.endsWith('.') ? '' : '.'));
-                    
-                structuredData.topic.bullets.push(...sentences.slice(0, 3));
-                sentences.slice(0, 3).forEach(b => console.log('📌 Found explanation bullet:', b));
-            }
 
-           
-
-            const questionKeywords = ['suggest', 'follow-up', 'question'];
-            if (questionKeywords.some(k => headerText.includes(k))) {
-                const questionLines = contentText.split('\n')
-                    .map(line => line.replace(/^\s*(\d+\.|-|\*)\s*/, '').trim())
-                    .filter(line => line.includes('?') && line.length > 10);
-                
-                structuredData.actions.push(...questionLines.slice(0, 3));
-                questionLines.slice(0, 3).forEach(q => console.log('📌 Found question:', q));
+                sentences.forEach(sentence => {
+                    if (structuredData.topic.bullets.length < 3 && !structuredData.topic.bullets.includes(sentence)) {
+                        structuredData.topic.bullets.push(sentence);
+                    }
+                });
+            } else if (trimmedLine.match(/^\d+\./) && currentSection === 'questions') {
+                const question = trimmedLine.replace(/^\d+\.\s*/, '').trim();
+                if (question && question.includes('?')) {
+                    structuredData.actions.push(`❓ ${question}`);
+                }
             }
         }
 
-        const fixedActions = ["What should i say next?", "Suggest follow-up questions"];
-        structuredData.actions = [...new Set([...structuredData.actions, ...fixedActions])];
+        // 기본 액션 추가
+        const defaultActions = ['✨ What should I say next?', '💬 Suggest follow-up questions'];
+        defaultActions.forEach(action => {
+            if (!structuredData.actions.includes(action)) {
+                structuredData.actions.push(action);
+            }
+        });
 
-        structuredData.summary = structuredData.summary.slice(0, 5);
-        structuredData.topic.bullets = [...new Set(structuredData.topic.bullets)].slice(0, 3);
+        // 액션 개수 제한
         structuredData.actions = structuredData.actions.slice(0, 5);
-        structuredData.followUps = [
-            "Draft a follow-up email",
-            "Generate action items", 
-            "Show summary"
-        ];
 
+        // 유효성 검증 및 이전 데이터 병합
+        if (structuredData.summary.length === 0 && previousResult) {
+            structuredData.summary = previousResult.summary;
+        }
+        if (structuredData.topic.bullets.length === 0 && previousResult) {
+            structuredData.topic.bullets = previousResult.topic.bullets;
+        }
     } catch (error) {
         console.error('❌ Error parsing response text:', error);
-        return {
-            summary: [],
-            topic: { header: '', bullets: [] },
-            actions: ["What should i say next?", "Suggest follow-up questions"],
-            followUps: [
-                "Draft a follow-up email",
-                "Generate action items",
-                "Show summary"
-            ]
-        };
+        // 에러 시 이전 결과 반환
+        return (
+            previousResult || {
+                summary: [],
+                topic: { header: 'Analysis in progress', bullets: [] },
+                actions: ['✨ What should I say next?', '💬 Suggest follow-up questions'],
+                followUps: ['✉️ Draft a follow-up email', '✅ Generate action items', '📝 Show summary'],
+            }
+        );
     }
-    
+
     console.log('📊 Final structured data:', JSON.stringify(structuredData, null, 2));
     return structuredData;
 }
@@ -362,17 +371,19 @@ function parseResponseText(responseText) {
 async function triggerAnalysisIfNeeded() {
     if (conversationHistory.length >= 5 && conversationHistory.length % 5 === 0) {
         console.log(`🚀 Triggering analysis (non-blocking) - ${conversationHistory.length} conversation texts accumulated`);
-        
-        makeOutlineAndRequests(conversationHistory).then(data => {
-            if (data) {
-                console.log('📤 Sending structured data to renderer');
-                sendToRenderer('update-structured-data', data);
-            } else {
-                console.log('❌ No analysis data returned from non-blocking call');
-            }
-        }).catch(error => {
-            console.error('❌ Error in non-blocking analysis:', error);
-        });
+
+        makeOutlineAndRequests(conversationHistory)
+            .then(data => {
+                if (data) {
+                    console.log('📤 Sending structured data to renderer');
+                    sendToRenderer('update-structured-data', data);
+                } else {
+                    console.log('❌ No analysis data returned from non-blocking call');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error in non-blocking analysis:', error);
+            });
     }
 }
 
@@ -382,7 +393,7 @@ async function triggerAnalysisIfNeeded() {
  */
 function startAnalysisInterval() {
     console.log('⏰ Analysis will be triggered every 5 conversation texts (not on timer)');
-    
+
     if (analysisIntervalId) {
         clearInterval(analysisIntervalId);
         analysisIntervalId = null;
@@ -394,7 +405,7 @@ function stopAnalysisInterval() {
         clearInterval(analysisIntervalId);
         analysisIntervalId = null;
     }
-    
+
     if (myInactivityTimer) {
         clearTimeout(myInactivityTimer);
         myInactivityTimer = null;
@@ -417,7 +428,7 @@ function getCurrentSessionData() {
     return {
         sessionId: currentSessionId,
         conversationHistory: conversationHistory,
-        totalTexts: conversationHistory.length
+        totalTexts: conversationHistory.length,
     };
 }
 
@@ -427,42 +438,40 @@ async function initializeNewSession() {
         const uid = dataService.currentUserId; // Get current user (local or firebase)
         currentSessionId = await sqliteClient.createSession(uid);
         console.log(`[DB] New session started in DB: ${currentSessionId}`);
-        
+
         conversationHistory = [];
         myCurrentUtterance = '';
         theirCurrentUtterance = '';
-        
+
         // sendToRenderer('update-outline', []);
         // sendToRenderer('update-analysis-requests', []);
 
-    myLastPartialText = '';
-    theirLastPartialText = '';
-    if (myInactivityTimer) {
-        clearTimeout(myInactivityTimer);
-        myInactivityTimer = null;
-    }
-    if (theirInactivityTimer) {
-        clearTimeout(theirInactivityTimer);
-        theirInactivityTimer = null;
-    }
-    
-    console.log('New conversation session started:', currentSessionId);
+        myLastPartialText = '';
+        theirLastPartialText = '';
+        if (myInactivityTimer) {
+            clearTimeout(myInactivityTimer);
+            myInactivityTimer = null;
+        }
+        if (theirInactivityTimer) {
+            clearTimeout(theirInactivityTimer);
+            theirInactivityTimer = null;
+        }
+
+        console.log('New conversation session started:', currentSessionId);
         return true;
     } catch (error) {
-        console.error("Failed to initialize new session in DB:", error);
+        console.error('Failed to initialize new session in DB:', error);
         currentSessionId = null;
         return false;
     }
 }
 
-
-
 async function saveConversationTurn(speaker, transcription) {
     if (!currentSessionId) {
-        console.log("No active session, initializing a new one first.");
+        console.log('No active session, initializing a new one first.');
         const success = await initializeNewSession();
         if (!success) {
-            console.error("Could not save turn because session initialization failed.");
+            console.error('Could not save turn because session initialization failed.');
             return;
         }
     }
@@ -493,15 +502,13 @@ async function saveConversationTurn(speaker, transcription) {
             console.log(`🔄 Auto-saving conversation session ${currentSessionId} (${conversationHistory.length} turns)`);
             sendToRenderer('save-conversation-session', {
                 sessionId: currentSessionId,
-                conversationHistory: conversationHistory
-
+                conversationHistory: conversationHistory,
             });
         }
     } catch (error) {
-        console.error("Failed to save transcript to DB:", error);
+        console.error('Failed to save transcript to DB:', error);
     }
 }
-
 
 async function initializeLiveSummarySession(language = 'en') {
     if (isInitializingSession) {
@@ -509,8 +516,8 @@ async function initializeLiveSummarySession(language = 'en') {
         return false;
     }
 
-    const loggedIn = isFirebaseLoggedIn(); 
-    const keyType  = loggedIn ? 'vKey' : 'apiKey';
+    const loggedIn = isFirebaseLoggedIn();
+    const keyType = loggedIn ? 'vKey' : 'apiKey';
 
     isInitializingSession = true;
     sendToRenderer('session-initializing', true);
@@ -531,7 +538,7 @@ async function initializeLiveSummarySession(language = 'en') {
     try {
         const handleMyMessage = message => {
             const type = message.type;
-            const text = message.transcript || message.delta ||(message.alternatives && message.alternatives[0]?.transcript) || '';
+            const text = message.transcript || message.delta || (message.alternatives && message.alternatives[0]?.transcript) || '';
 
             if (type === 'conversation.item.input_audio_transcription.delta') {
                 if (myCompletionTimer) {
@@ -566,14 +573,14 @@ async function initializeLiveSummarySession(language = 'en') {
 
         const handleTheirMessage = message => {
             const type = message.type;
-            const text = message.transcript || message.delta ||(message.alternatives && message.alternatives[0]?.transcript) || '';
+            const text = message.transcript || message.delta || (message.alternatives && message.alternatives[0]?.transcript) || '';
 
             if (type === 'conversation.item.input_audio_transcription.delta') {
                 if (theirCompletionTimer) {
                     clearTimeout(theirCompletionTimer);
                     theirCompletionTimer = null;
                 }
-                
+
                 theirCurrentUtterance += text;
 
                 const continuousText = theirCompletionBuffer + (theirCompletionBuffer ? ' ' : '') + theirCurrentUtterance;
@@ -603,17 +610,17 @@ async function initializeLiveSummarySession(language = 'en') {
             language: language,
             callbacks: {
                 onmessage: handleMyMessage,
-                onerror: (error) => console.error('My STT session error:', error.message),
-                onclose: (event) => console.log('My STT session closed:', event.reason)
-            }
+                onerror: error => console.error('My STT session error:', error.message),
+                onclose: event => console.log('My STT session closed:', event.reason),
+            },
         };
         const theirSttConfig = {
             language: language,
             callbacks: {
                 onmessage: handleTheirMessage,
-                onerror: (error) => console.error('Their STT session error:', error.message),
-                onclose: (event) => console.log('Their STT session closed:', event.reason)
-            }
+                onerror: error => console.error('Their STT session error:', error.message),
+                onclose: event => console.log('Their STT session closed:', event.reason),
+            },
         };
 
         [mySttSession, theirSttSession] = await Promise.all([
@@ -621,7 +628,7 @@ async function initializeLiveSummarySession(language = 'en') {
             connectToOpenAiSession(API_KEY, theirSttConfig, keyType),
         ]);
 
-        console.log("✅ Both STT sessions initialized successfully.");
+        console.log('✅ Both STT sessions initialized successfully.');
         triggerAnalysisIfNeeded();
 
         sendToRenderer('session-state-changed', { isActive: true });
@@ -630,7 +637,6 @@ async function initializeLiveSummarySession(language = 'en') {
         sendToRenderer('session-initializing', false);
         sendToRenderer('update-status', 'Connected. Ready to listen.');
         return true;
-
     } catch (error) {
         console.error('❌ Failed to initialize OpenAI STT sessions:', error);
         isInitializingSession = false;
@@ -812,7 +818,7 @@ async function closeSession() {
 
         await Promise.all(closePromises);
         console.log('All sessions closed.');
-        
+
         currentSessionId = null;
         conversationHistory = [];
 
@@ -872,7 +878,6 @@ function setupLiveSummaryIpcHandlers() {
             return { success: false, error: error.message };
         }
     });
-
 
     ipcMain.handle('get-conversation-history', async () => {
         try {

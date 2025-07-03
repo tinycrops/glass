@@ -34,11 +34,11 @@
 ## Highlights
 
 
-### Ask: get answers based on your all previous screen actions & audio
+### Ask: get answers based on all your previous screen actions & audio
 
 <img width="100%" alt="booking-screen" src="./public/assets/00.gif">
 
-### Meetings: real-time meeting notes, live summary, session records
+### Meetings: real-time meeting notes, live summaries, session records
 
 <img width="100%" alt="booking-screen" src="./public/assets/01.gif">
 
@@ -48,14 +48,14 @@
 
 You can visit [here](https://platform.openai.com/api-keys) to get your OpenAI API Key.
 
-### Liquid glass design (coming soon)
+### Liquid Glass Design (coming soon)
 
 <img width="100%" alt="booking-screen" src="./public/assets/03.gif">
 
 <p>
-  for more detailed guide, please refer to this <a href="https://www.youtube.com/watch?v=qHg3_4bU1Dw">video.</a>
+  for a more detailed guide, please refer to this <a href="https://www.youtube.com/watch?v=qHg3_4bU1Dw">video.</a>
   <i style="color:gray; font-weight:300;">
-    we don't waste money on fancy vids, we just code.
+    we don't waste money on fancy vids; we just code.
   </i>
 </p>
 
@@ -64,7 +64,7 @@ You can visit [here](https://platform.openai.com/api-keys) to get your OpenAI AP
 
 `Ctrl/Cmd + \` : show and hide main window
 
-`Ctrl/Cmd + Enter` : ask AI using your all previous screen and audio
+`Ctrl/Cmd + Enter` : ask AI using all your previous screen and audio
 
 `Ctrl/Cmd + Arrows` : move main window position
 

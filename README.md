@@ -24,7 +24,8 @@
 
 ## Quick Start (Local Build)
 
-First download & Install [Python](https://www.python.org/downloads/) and [Node](https://nodejs.org/en/download)
+First download & install [Python](https://www.python.org/downloads/) and [Node](https://nodejs.org/en/download).
+If you are using Windows, you need to also install [Build Tools for Visual Studio](https://visualstudio.microsoft.com/downloads/)
 
   ```bash
   npm run setup

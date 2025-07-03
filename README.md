@@ -71,4 +71,4 @@ We love contributions! Feel free to open issues for bugs or feature requests.
 
 ## About Pickle
 
-Our mission is to build a living digital clone for everyone. Glass is Step 1—a trusted pipeline that turns your daily data into a scalable clone. Visit [pickle.com](https://pickle.com) to learn more (we're hiring!)
+**Our mission is to build a living digital clone for everyone.** Glass is Step 1—a trusted pipeline that turns your daily data into a scalable clone. Visit [pickle.com](https://pickle.com) to learn more (we're hiring!)

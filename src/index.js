@@ -11,7 +11,7 @@ if (require('electron-squirrel-startup')) {
     process.exit(0);
 }
 
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog } = require('electron');
 const { createWindows } = require('./electron/windowManager.js');
 const { setupLiveSummaryIpcHandlers, stopMacOSAudioCapture } = require('./features/listen/liveSummaryService.js');
 const databaseInitializer = require('./common/services/databaseInitializer');
@@ -509,8 +509,17 @@ function initAutoUpdater() {
             return;
         }
 
+        autoUpdater.setFeedURL({
+            provider: 'github',
+            owner: 'pickle-com',
+            repo: 'glass',
+        });
+
         // Immediately check for updates & notify
-        autoUpdater.checkForUpdatesAndNotify();
+        autoUpdater.checkForUpdatesAndNotify()
+            .catch(err => {
+                console.error('[AutoUpdater] Error checking for updates:', err);
+            });
 
         autoUpdater.on('checking-for-update', () => {
             console.log('[AutoUpdater] Checking for updates…');
@@ -528,12 +537,24 @@ function initAutoUpdater() {
             console.error('[AutoUpdater] Error while updating:', err);
         });
 
-        autoUpdater.on('update-downloaded', () => {
-            console.log('[AutoUpdater] Update downloaded – will quit and install');
-            // Give the UI a moment (or prompt the user) then restart.
-            setTimeout(() => {
-                autoUpdater.quitAndInstall();
-            }, 1000);
+        autoUpdater.on('update-downloaded', (info) => {
+            console.log(`[AutoUpdater] Update downloaded: ${info.version}`);
+
+            const dialogOpts = {
+                type: 'info',
+                buttons: ['Install now', 'Install on next launch'],
+                title: 'Update Available',
+                message: 'A new version of Glass is ready to be installed.',
+                defaultId: 0,
+                cancelId: 1
+            };
+
+            dialog.showMessageBox(dialogOpts).then((returnValue) => {
+                // returnValue.response 0 is for 'Install Now'
+                if (returnValue.response === 0) {
+                    autoUpdater.quitAndInstall();
+                }
+            });
         });
     } catch (e) {
         console.error('[AutoUpdater] Failed to initialise:', e);

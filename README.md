@@ -8,11 +8,11 @@
 </p>
 
 <p align="center">
-  <a href="https://x.com/intent/user?screen_name=leinadpark">
-    <img width="109" src="./public/assets/button_we.png" alt="Pickle Website">
+  <a href="https://x.com/intent/user?screen_name=leinadpark" style="text-decoration: none;">
+    <img width="105" src="./public/assets/button_we.png" alt="Pickle Website" style="border: none;">
   </a>
-  <a href="https://pickle.com">
-    <img width="109" src="./public/assets/button_xe.png" alt="Follow Daniel">
+  <a href="https://pickle.com" style="text-decoration: none;">
+    <img width="109" src="./public/assets/button_xe.png" alt="Follow Daniel" style="border: none;">
   </a>
 </p>
 

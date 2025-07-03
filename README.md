@@ -1,50 +1,74 @@
 <p align="center">
-  <a href="https://www.pickle.com/glass">
-   <img src="./public/assets/banner.png" alt="Logo">
+  <a href="https://pickle.com/glass">
+   <img src="./public/assets/banner.gif" alt="Logo">
   </a>
 
-  <h3 align="center">Glass by Pickle</h3>
+  <h1 align="center">Glass by Pickle: Digital Mind Extension 🧠</h1>
 
-  <p align="center">
-    Invisible AI Desktop Asisstant.
-    <br />
-    <br />
-    <a href="https://www.pickle.com/glass">Website</a>
-    ·
-    <a href="https://www.dropbox.com/scl/fi/znid09apxiwtwvxer6oc9/Glass_latest.dmg?rlkey=gwvvyb3bizkl25frhs4k1zwds&st=37q31b4w&dl=1">Direct Download for MacOS</a>
-  </p>
 </p>
 
+<p align="center">
+  <a href="https://x.com/intent/user?screen_name=leinadpark">
+    <img width="109" src="./public/assets/button_we.png" alt="Pickle Website">
+  </a>
+  <a href="https://pickle.com">
+    <img width="109" src="./public/assets/button_xe.png" alt="Follow Daniel">
+  </a>
+</p>
 
-## Installation
+🤖 **Fast, light & open-source**—Glass lives on your desktop, sees what you see, listens in real time, understands your context, and turns every moment into structured knowledge.
+
+💬 **Proactive in meetings**—it surfaces action items, summaries, and answers the instant you need them.
+
+🫥️ **Truly invisible**—never shows up in screen recordings, screenshots, or your dock; no always-on capture or hidden sharing.
+
+## Instant Launch
+
+⚡️  Skip the setup—launch instantly with our ready-to-run macOS app.  [[Download Here]](https://www.dropbox.com/scl/fi/znid09apxiwtwvxer6oc9/Glass_latest.dmg?rlkey=gwvvyb3bizkl25frhs4k1zwds&st=37q31b4w&dl=1)
+
+## Quick Start (Local Build)
 
 
   ```bash
   npm run setup
   ```
 
-- or [Direct download for Macos](https://www.dropbox.com/scl/fi/znid09apxiwtwvxer6oc9/Glass_latest.dmg?rlkey=gwvvyb3bizkl25frhs4k1zwds&st=37q31b4w&dl=1) (Public Beta)
+
 
 ## Highlights
+
+
+### Ask: get answers based on your all previous screen actions & audio
+
 <img width="100%" alt="booking-screen" src="./public/assets/00.gif">
 
-#### Glass runs in background, sees your screen and listens to your audio.
+### Meetings: real-time meeting notes, live summary, session records
+
+<img width="100%" alt="booking-screen" src="./public/assets/01.gif">
+
+### Use your own OpenAI API key, or sign up to use ours (free)
+
+<img width="100%" alt="booking-screen" src="./public/assets/02.gif">
+
+You can visit [here](https://platform.openai.com/api-keys) to get your OpenAI API Key.
+
+### Liquid glass design (coming soon)
+
+<img width="100%" alt="booking-screen" src="./public/assets/03.gif">
 
 
-- `Ctrl/Cmd + Enter` to Ask AI with your context anytime.
-- `Listen` starts note taking and live summary.
-- `Ctrl/Cmd + \` to hide, `Ctrl/Cmd + arrows` to move.
+## Keyboard Shortcuts
 
-### True Glass Design (Coming Soon)
+`Ctrl/Cmd + \` : show and hide main window
 
-<img width="50%" alt="booking-screen" src="./public/assets/01.gif">
+`Ctrl/Cmd + Enter` : ask AI using your all previous screen and audio
 
-## Powering your AI
+`Ctrl/Cmd + Arrows` : move main window position
 
-- You can choose either to use your own API key, or use Pickle's API Key for free in the onboarding.
-- To use your own OpenAI API key, visit [here](https://platform.openai.com/api-keys) to get your key.
+## Contributing
 
+We love contributions! Feel free to open issues for bugs or feature requests.
 
 ## About Pickle
 
-We are Interactive Clone Company. Please visit [pickle.com](https://pickle.com) to learn more.
+Our mission is to build a living digital clone for everyone. Glass is Step 1—a trusted pipeline that turns your daily data into a scalable clone. Visit [pickle.com](https://pickle.com) to learn more (we're hiring!)

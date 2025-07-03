@@ -26,7 +26,7 @@
 - or [Direct download for Macos](https://www.pickle.com) (Public Beta)
 
 ## Highlights
-<img width="100%" alt="booking-screen" src="./public/assets/product_shot.png">
+<img width="100%" alt="booking-screen" src="./public/assets/00.gif">
 
 #### Glass runs in background, sees your screen and listens to your audio.
 

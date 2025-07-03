@@ -24,6 +24,7 @@
 
 ## Quick Start (Local Build)
 
+First download & Install [Python](https://www.python.org/downloads/) and [Node](https://nodejs.org/en/download)
 
   ```bash
   npm run setup

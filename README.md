@@ -7,11 +7,11 @@
 
 </p>
 
+
 <p align="center">
   <a href="https://x.com/intent/user?screen_name=leinadpark" style="text-decoration: none;">
     <img width="105" src="./public/assets/button_we.png" alt="Pickle Website" style="border: none;">
-  </a>
-  <a href="https://pickle.com" style="text-decoration: none;">
+  </a><a href="https://pickle.com" style="text-decoration: none;">
     <img width="109" src="./public/assets/button_xe.png" alt="Follow Daniel" style="border: none;">
   </a>
 </p>
@@ -56,6 +56,13 @@ You can visit [here](https://platform.openai.com/api-keys) to get your OpenAI AP
 
 <img width="100%" alt="booking-screen" src="./public/assets/03.gif">
 
+<p>
+  for more detailed guide, please refer to this <a href="https://www.youtube.com/watch?v=qHg3_4bU1Dw">video.</a>
+  <i style="color:gray; font-weight:300;">
+    we don't waste money on fancy vids, we just code.
+  </i>
+</p>
+
 
 ## Keyboard Shortcuts
 
@@ -71,4 +78,4 @@ We love contributions! Feel free to open issues for bugs or feature requests.
 
 ## About Pickle
 
-**Our mission is to build a living digital clone for everyone.** Glass is Step 1—a trusted pipeline that turns your daily data into a scalable clone. Visit [pickle.com](https://pickle.com) to learn more (we're hiring!)
+**Our mission is to build a living digital clone for everyone.** Glass is part of Step 1—a trusted pipeline that transforms your daily data into a scalable clone. Visit [pickle.com](https://pickle.com) to learn more.

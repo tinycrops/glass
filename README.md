@@ -24,12 +24,25 @@
 
 ## Quick Start (Local Build)
 
+### Prerequisites
 
-  ```bash
-  npm run setup
-  ```
+**Mac Users:** Ensure you're using Node.js version 20.x.x to avoid build errors with native dependencies.
 
+```bash
+# Check your Node.js version
+node --version
 
+# If you need to install Node.js 20.x.x, we recommend using nvm:
+# curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+# nvm install 20
+# nvm use 20
+```
+
+### Installation
+
+```bash
+npm run setup
+```
 
 ## Highlights
 

@@ -19,6 +19,7 @@ files:
   - package.json
   - pickleglass_web/backend_node/**/*
   - '!**/node_modules/electron/**'
+  - public/build/**/*
 
 # Additional resources to be copied into the app's resources directory
 extraResources:

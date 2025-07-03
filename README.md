@@ -11,7 +11,7 @@
     <br />
     <a href="https://www.pickle.com/glass">Website</a>
     ·
-    <a href="https://www.pickle.com/glass">Direct Download for MacOS</a>
+    <a href="https://www.dropbox.com/scl/fi/znid09apxiwtwvxer6oc9/Glass_latest.dmg?rlkey=gwvvyb3bizkl25frhs4k1zwds&st=37q31b4w&dl=1">Direct Download for MacOS</a>
   </p>
 </p>
 
@@ -23,7 +23,7 @@
   npm run setup
   ```
 
-- or [Direct download for Macos](https://www.pickle.com) (Public Beta)
+- or [Direct download for Macos](https://www.dropbox.com/scl/fi/znid09apxiwtwvxer6oc9/Glass_latest.dmg?rlkey=gwvvyb3bizkl25frhs4k1zwds&st=37q31b4w&dl=1) (Public Beta)
 
 ## Highlights
 <img width="100%" alt="booking-screen" src="./public/assets/00.gif">

@@ -934,6 +934,9 @@ export class AskView extends LitElement {
 
             responseContainer.innerHTML = `<p>${basicHtml}</p>`;
         }
+
+        // 🚀 After updating content, recalculate window height
+        this.adjustWindowHeightThrottled();
     }
 
     clearResponseContent() {

@@ -41,7 +41,7 @@ const windowDefinitions = {
         },
         allowedStates: ['app'],
     },
-    assistant: {
+    listen: {
         file: 'assistant.html',
         options: {
             /*…*/
@@ -56,6 +56,61 @@ const windowDefinitions = {
         allowedStates: ['app'],
     },
 };
+
+const featureWindows = ['listen','ask','settings'];
+
+/** AppHeader 존재 시 호출 – 3개 서브 창을 새로 만들고 pool에 등록 */
+function createFeatureWindows(header) {
+    if (windowPool.has('listen')) return;   // 이미 생성됨
+
+    const commonChildOptions = {
+        parent: header,
+        show: false,
+        frame: false,
+        transparent: true,
+        hasShadow: false,
+        skipTaskbar: true,
+        hiddenInMissionControl: true,
+        resizable: false,
+        webPreferences: { nodeIntegration: true, contextIsolation: false },
+    };
+
+    // listen
+    const listen = new BrowserWindow({
+        ...commonChildOptions, width:400,height:300,minWidth:400,maxWidth:400,
+        minHeight:200,maxHeight:700,
+    });
+    listen.setContentProtection(isContentProtectionOn);
+    listen.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+    listen.loadFile(path.join(__dirname,'../app/content.html'),{query:{view:'listen'}});
+    windowPool.set('listen', listen);
+
+    // ask
+    const ask = new BrowserWindow({ ...commonChildOptions, width:600, height:350 });
+    ask.setContentProtection(isContentProtectionOn);
+    ask.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+    ask.loadFile(path.join(__dirname,'../app/content.html'),{query:{view:'ask'}});
+    ask.on('blur',()=>ask.webContents.send('window-blur'));
+    windowPool.set('ask', ask);
+
+    // settings
+    const settings = new BrowserWindow({ ...commonChildOptions, width:240, height:450, parent:undefined });
+    settings.setContentProtection(isContentProtectionOn);
+    settings.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+    settings.loadFile(path.join(__dirname,'../app/content.html'),{query:{view:'customize'}})
+        .catch(console.error);
+    windowPool.set('settings', settings);
+}
+
+/** AppHeader 사라질 때 호출 – 서브 창 완전 파괴 */
+function destroyFeatureWindows() {
+    featureWindows.forEach(name=>{
+        const win = windowPool.get(name);
+        if (win && !win.isDestroyed()) win.destroy();
+        windowPool.delete(name);
+    });
+}
+// ──────────────────────────────────────────────────────────────────
 
 function isAllowed(name) {
     const def = windowDefinitions[name];
@@ -901,6 +956,13 @@ function createWindows() {
             webSecurity: false,
         },
     });
+
+    windowPool.set('header', header);
+
+    if (currentHeaderState === 'app') {
+        createFeatureWindows(header);
+    }
+
     header.setContentProtection(isContentProtectionOn);
     header.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     header.loadFile(path.join(__dirname, '../app/header.html'));
@@ -922,75 +984,75 @@ function createWindows() {
         }
     });
 
-    windowPool.set('header', header);
+    // windowPool.set('header', header);
 
-    const commonChildOptions = {
-        parent: header,
-        show: false,
-        frame: false,
-        transparent: true,
-        hasShadow: false,
-        skipTaskbar: true,
-        hiddenInMissionControl: true,
-        resizable: false,
-        webPreferences: { nodeIntegration: true, contextIsolation: false },
-    };
+    // const commonChildOptions = {
+    //     parent: header,
+    //     show: false,
+    //     frame: false,
+    //     transparent: true,
+    //     hasShadow: false,
+    //     skipTaskbar: true,
+    //     hiddenInMissionControl: true,
+    //     resizable: false,
+    //     webPreferences: { nodeIntegration: true, contextIsolation: false },
+    // };
 
-    const listen = new BrowserWindow({
-        ...commonChildOptions,
-        width: 400,
-        height: 300,
-        minWidth: 400,
-        maxWidth: 400,
-        minHeight: 200,
-        maxHeight: 700,
-    });
-    listen.setContentProtection(isContentProtectionOn);
-    listen.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    listen.loadFile(path.join(__dirname, '../app/content.html'), { query: { view: 'listen' } });
-    windowPool.set('listen', listen);
+    // const listen = new BrowserWindow({
+    //     ...commonChildOptions,
+    //     width: 400,
+    //     height: 300,
+    //     minWidth: 400,
+    //     maxWidth: 400,
+    //     minHeight: 200,
+    //     maxHeight: 700,
+    // });
+    // listen.setContentProtection(isContentProtectionOn);
+    // listen.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // listen.loadFile(path.join(__dirname, '../app/content.html'), { query: { view: 'listen' } });
+    // windowPool.set('listen', listen);
 
-    const ask = new BrowserWindow({ ...commonChildOptions, width: 600, height: 350 });
-    ask.setContentProtection(isContentProtectionOn);
-    ask.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    ask.loadFile(path.join(__dirname, '../app/content.html'), { query: { view: 'ask' } });
-    ask.on('blur', () => {
-        ask.webContents.send('window-blur');
-    });
-    windowPool.set('ask', ask);
+    // const ask = new BrowserWindow({ ...commonChildOptions, width: 600, height: 350 });
+    // ask.setContentProtection(isContentProtectionOn);
+    // ask.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // ask.loadFile(path.join(__dirname, '../app/content.html'), { query: { view: 'ask' } });
+    // ask.on('blur', () => {
+    //     ask.webContents.send('window-blur');
+    // });
+    // windowPool.set('ask', ask);
 
-    const settings = new BrowserWindow({
-        ...commonChildOptions,
-        width: 240,
-        height: 450,
-        parent: undefined,
-        modal: false,
-        transparent: true,
-        frame: false,
-    });
-    settings.setContentProtection(isContentProtectionOn);
-    settings.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // const settings = new BrowserWindow({
+    //     ...commonChildOptions,
+    //     width: 240,
+    //     height: 450,
+    //     parent: undefined,
+    //     modal: false,
+    //     transparent: true,
+    //     frame: false,
+    // });
+    // settings.setContentProtection(isContentProtectionOn);
+    // settings.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-    console.log('Settings window created with bounds:', settings.getBounds());
+    // console.log('Settings window created with bounds:', settings.getBounds());
 
-    settings
-        .loadFile(path.join(__dirname, '../app/content.html'), { query: { view: 'customize' } })
-        .then(() => {
-            console.log('Settings content loaded successfully');
-        })
-        .catch(error => {
-            console.error('Failed to load settings content:', error);
-        });
+    // settings
+    //     .loadFile(path.join(__dirname, '../app/content.html'), { query: { view: 'customize' } })
+    //     .then(() => {
+    //         console.log('Settings content loaded successfully');
+    //     })
+    //     .catch(error => {
+    //         console.error('Failed to load settings content:', error);
+    //     });
 
-    settings.webContents.once('dom-ready', () => {
-        console.log('Settings window DOM ready');
-    });
+    // settings.webContents.once('dom-ready', () => {
+    //     console.log('Settings window DOM ready');
+    // });
 
-    settings.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-        console.error('Settings window failed to load:', errorCode, errorDescription);
-    });
+    // settings.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    //     console.error('Settings window failed to load:', errorCode, errorDescription);
+    // });
 
-    windowPool.set('settings', settings);
+    // windowPool.set('settings', settings);
 
     header.on('resize', updateLayout);
 
@@ -1001,6 +1063,10 @@ function createWindows() {
     ipcMain.handle('toggle-all-windows-visibility', toggleAllWindowsVisibility);
 
     ipcMain.handle('toggle-feature', async (event, featureName) => {
+        if (!windowPool.get(featureName) && currentHeaderState === 'app') {
+            createFeatureWindows(windowPool.get('header'));
+        }
+
         const windowToToggle = windowPool.get(featureName);
 
         if (windowToToggle) {
@@ -1229,7 +1295,7 @@ function updateLayout() {
 
 function setupIpcHandlers(openaiSessionRef) {
     const layoutManager = new WindowLayoutManager();
-    const movementManager = new SmoothMovementManager();
+    // const movementManager = new SmoothMovementManager();
 
     screen.on('display-added', (event, newDisplay) => {
         console.log('[Display] New display added:', newDisplay.id);
@@ -1362,17 +1428,6 @@ function setupIpcHandlers(openaiSessionRef) {
         return false;
     });
 
-    ipcMain.handle('send-to-ask-view', (event, data) => {
-        const askWindow = windowPool.get('ask');
-        if (askWindow && !askWindow.isDestroyed()) {
-            console.log('📨 Main process: Sending data to AskView', data);
-            askWindow.webContents.send('add-ask-response', data);
-            return { success: true };
-        } else {
-            console.error('❌ Cannot find AskView window');
-            return { success: false, error: 'AskView window not found' };
-        }
-    });
 
     ipcMain.handle('toggle-content-protection', () => {
         isContentProtectionOn = !isContentProtectionOn;
@@ -1392,6 +1447,12 @@ function setupIpcHandlers(openaiSessionRef) {
     ipcMain.on('header-state-changed', (event, state) => {
         console.log(`[WindowManager] Header state changed to: ${state}`);
         currentHeaderState = state;
+
+        if (state === 'app') {
+            createFeatureWindows(windowPool.get('header'));
+        } else {         // 'apikey'
+            destroyFeatureWindows();
+        }
 
         for (const [name, win] of windowPool) {
             if (!isAllowed(name) && !win.isDestroyed()) {

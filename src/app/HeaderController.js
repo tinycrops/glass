@@ -19,11 +19,43 @@ const auth = getAuth(firebaseApp);
 
 class HeaderTransitionManager {
     constructor() {
-        this.apiKeyHeader = document.getElementById('apikey-header');
-        this.appHeader = document.getElementById('app-header');
-        this.isInitialized = false;
-        this.hasApiKey = false;
-        this.notifyHeaderState();
+        // this.apiKeyHeader = document.getElementById('apikey-header');
+        // this.appHeader = document.getElementById('app-header');
+        // this.isInitialized = false;
+        // this.hasApiKey = false;
+        // this.notifyHeaderState();
+
+        // ─── NEW: 동적 헤더 관리 ────────────────────────────────────────────
+        this.headerContainer      = document.getElementById('header-container');
+        this.currentHeaderType    = null;   // 'apikey' | 'app'
+        this.apiKeyHeader         = null;
+        this.appHeader            = null;
+
+        /**
+         * 하나의 헤더만 존재하도록 보장
+         * @param {'apikey'|'app'} type
+         */
+        this.ensureHeader = (type) => {
+            if (this.currentHeaderType === type) return;
+
+            // ① 기존 헤더 제거
+            if (this.apiKeyHeader) { this.apiKeyHeader.remove(); this.apiKeyHeader = null; }
+            if (this.appHeader)    { this.appHeader.remove();    this.appHeader   = null; }
+
+            // ② 새 헤더 생성
+            if (type === 'apikey') {
+                this.apiKeyHeader      = document.createElement('apikey-header');
+                this.headerContainer.appendChild(this.apiKeyHeader);
+            } else {
+                this.appHeader         = document.createElement('app-header');
+                this.headerContainer.appendChild(this.appHeader);
+                this.appHeader.startSlideInAnimation?.();
+            }
+
+            this.currentHeaderType = type;
+            this.notifyHeaderState(type);   // 상태 브로드캐스트
+        };
+        // ──────────────────────────────────────────────────────────────────
 
         console.log('[HeaderController] Manager initialized');
 
@@ -114,6 +146,8 @@ class HeaderTransitionManager {
             });
         }
 
+        this.ensureHeader('apikey');
+
         onAuthStateChanged(auth, async user => {
             console.log('[HeaderController] Auth state changed. User:', user ? user.email : 'null');
 
@@ -163,35 +197,86 @@ class HeaderTransitionManager {
         });
     }
 
-    notifyHeaderState() {
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            const isApiKeyVisible =
-                this.apiKeyHeader && this.apiKeyHeader.style.display !== 'none' && !this.apiKeyHeader.classList.contains('hidden');
-            const state = isApiKeyVisible ? 'apikey' : 'app';
+    // notifyHeaderState() {
+    //     if (window.require) {
+    //         const { ipcRenderer } = window.require('electron');
+    //         const isApiKeyVisible =
+    //             this.apiKeyHeader && this.apiKeyHeader.style.display !== 'none' && !this.apiKeyHeader.classList.contains('hidden');
+    //         const state = isApiKeyVisible ? 'apikey' : 'app';
 
-            ipcRenderer.send('header-state-changed', state);
-            console.log(`[HeaderController] Notified header state: ${state}`);
+    //         ipcRenderer.send('header-state-changed', state);
+    //         console.log(`[HeaderController] Notified header state: ${state}`);
+    //     }
+    // }
+
+    notifyHeaderState(stateOverride) {
+        const state = stateOverride || this.currentHeaderType || 'apikey';
+        if (window.require) {
+            window.require('electron').ipcRenderer.send('header-state-changed', state);
         }
     }
+
+    // async transitionToAppHeader(animate = true) {
+    //     console.log(`[HeaderController] Transitioning to AppHeader (animate: ${animate})`);
+    //     const isApiKeyVisible = this.apiKeyHeader.style.display !== 'none' && !this.apiKeyHeader.classList.contains('hidden');
+
+    //     if (animate && isApiKeyVisible) {
+    //         this.apiKeyHeader.startSlideOutAnimation();
+    //         this.apiKeyHeader.addEventListener(
+    //             'animationend',
+    //             () => {
+    //                 this.showAppHeader();
+    //             },
+    //             { once: true }
+    //         );
+    //     } else {
+    //         this.showAppHeader();
+    //     }
+    // }
 
     async transitionToAppHeader(animate = true) {
-        console.log(`[HeaderController] Transitioning to AppHeader (animate: ${animate})`);
-        const isApiKeyVisible = this.apiKeyHeader.style.display !== 'none' && !this.apiKeyHeader.classList.contains('hidden');
-
-        if (animate && isApiKeyVisible) {
-            this.apiKeyHeader.startSlideOutAnimation();
-            this.apiKeyHeader.addEventListener(
-                'animationend',
-                () => {
-                    this.showAppHeader();
-                },
-                { once: true }
-            );
-        } else {
-            this.showAppHeader();
-        }
+            // 이미 AppHeader 라면 리사이즈만 보장
+            if (this.currentHeaderType === 'app') {
+                return this._resizeForApp();
+            }
+        
+            /* ------------------------------------------------------------------
+             * 1) ApiKeyHeader 가 보여‑지고 있고, 애니메이션을 재생할 필요가 있을 때만
+             *    slide‑out 을 시도한다. 이미 hidden 이거나 start 함수를
+             *    찾지 못하면 즉시 AppHeader 로 전환한다.
+             * ------------------------------------------------------------------ */
+            const canAnimate =
+                animate &&
+                this.apiKeyHeader &&
+                !this.apiKeyHeader.classList.contains('hidden') &&
+                typeof this.apiKeyHeader.startSlideOutAnimation === 'function';
+        
+            if (canAnimate) {
+                const old = this.apiKeyHeader;
+                const onEnd = () => {
+                    clearTimeout(fallback);
+                    this.ensureHeader('app');
+                    this._resizeForApp();
+                };
+                old.addEventListener('animationend', onEnd, { once: true });
+                old.startSlideOutAnimation();
+        
+                // **안전 장치** – 450 ms 내에 animationend 가 오지 않으면 직접 전환
+                const fallback = setTimeout(onEnd, 450);
+            } else {
+                this.ensureHeader('app');
+                this._resizeForApp();
+            }
     }
+
+    /** AppHeader 크기 보정 전용 헬퍼 */
+    _resizeForApp() {
+            if (!window.require) return;
+            return window
+                .require('electron')
+                .ipcRenderer.invoke('resize-header-window', { width: 353, height: 60 })
+                .catch(() => {});
+        }
 
     async showAppHeader() {
         try {
@@ -223,14 +308,41 @@ class HeaderTransitionManager {
         }
     }
 
+    // async transitionToApiKeyHeader() {
+    //     console.log('[HeaderController] Transitioning to ApiKeyHeader');
+    //     await window.require('electron').ipcRenderer.invoke('resize-header-window', { width: 285, height: 220 });
+    //     this.appHeader.style.display = 'none';
+    //     this.apiKeyHeader.style.display = 'block';
+    //     this.apiKeyHeader.reset();
+    //     this.notifyHeaderState();
+    // }
+    // async transitionToApiKeyHeader() {
+    //     if (this.currentHeaderType === 'apikey') return;
+    
+    //     this.ensureHeader('apikey');
+    
+    //     // 헤더 창 사이즈 조정
+    //     await window.require('electron')
+    //         .ipcRenderer.invoke('resize-header-window', { width: 285, height: 220 });
+    
+    //     this.apiKeyHeader.reset();
+    // }
+
     async transitionToApiKeyHeader() {
-        console.log('[HeaderController] Transitioning to ApiKeyHeader');
-        await window.require('electron').ipcRenderer.invoke('resize-header-window', { width: 285, height: 220 });
-        this.appHeader.style.display = 'none';
-        this.apiKeyHeader.style.display = 'block';
-        this.apiKeyHeader.reset();
-        this.notifyHeaderState();
-    }
+        // ① 헤더가 apikey 가 아니라면 교체
+        if (this.currentHeaderType !== 'apikey') {
+            this.ensureHeader('apikey');
+        }
+    
+        // ② 항상 크기 리사이즈 (첫 실행 포함)
+        await window
+            .require('electron')
+            .ipcRenderer.invoke('resize-header-window', { width: 285, height: 220 })
+            // .catch(() => {});
+    
+        // ③ 입력 폼 초기화
+        if (this.apiKeyHeader) this.apiKeyHeader.reset();
+}
 }
 
 window.addEventListener('DOMContentLoaded', () => {

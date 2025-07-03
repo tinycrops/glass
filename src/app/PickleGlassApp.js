@@ -42,8 +42,6 @@ export class PickleGlassApp extends LitElement {
         layoutMode: { type: String },
         _viewInstances: { type: Object, state: true },
         _isClickThrough: { state: true },
-        // outlines: { type: Array },
-        // analysisRequests: { type: Array },
         structuredData: { type: Object }, 
     };
 
@@ -51,7 +49,6 @@ export class PickleGlassApp extends LitElement {
         super();
         const urlParams = new URLSearchParams(window.location.search);
         this.currentView = urlParams.get('view') || 'listen';
-
         this.currentResponseIndex = -1;
         this.selectedProfile = localStorage.getItem('selectedProfile') || 'interview';
         this.selectedLanguage = localStorage.getItem('selectedLanguage') || 'en-US';
@@ -60,20 +57,7 @@ export class PickleGlassApp extends LitElement {
         this._isClickThrough = false;
         this.outlines = [];
         this.analysisRequests = [];
-        // window.pickleGlass.setOutline = lines => {
-        //     this.outlines = [...lines];
-        //     this.requestUpdate();
-        // };
-        // window.pickleGlass.setAnalysisRequests = lines => {
-        //     this.analysisRequests = [...lines];
-        //     this.requestUpdate();
-        // };
-        // window.pickleGlass.setOutline = lines => {
-        //     this.updateOutline(lines);
-        // };
-        // window.pickleGlass.setAnalysisRequests = lines => {
-        //     this.updateAnalysisRequests(lines);
-        // };
+
         window.pickleGlass.setStructuredData = data => {
             this.updateStructuredData(data);
         };

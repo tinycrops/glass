@@ -4,7 +4,6 @@ export class AskView extends LitElement {
     static properties = {
         currentResponse: { type: String },
         currentQuestion: { type: String },
-        showResponsePanel: { type: Boolean },
         isLoading: { type: Boolean },
         copyState: { type: String },
         isHovering: { type: Boolean },
@@ -14,7 +13,6 @@ export class AskView extends LitElement {
         headerText: { type: String },
         headerAnimating: { type: Boolean },
         isStreaming: { type: Boolean },
-        streamedResponse: { type: String },
     };
 
     static styles = css`
@@ -516,7 +514,6 @@ export class AskView extends LitElement {
         super();
         this.currentResponse = '';
         this.currentQuestion = '';
-        this.showResponsePanel = true;
         this.isLoading = false;
         this.copyState = 'idle';
         this.showTextInput = true;
@@ -698,7 +695,6 @@ export class AskView extends LitElement {
         this.handleQuestionFromAssistant = (event, question) => {
             console.log('📨 AskView: Received question from AssistantView:', question);
             this.currentResponse = '';
-            this.streamedResponse = '';
             this.isStreaming = false;
             this.requestUpdate();
 
@@ -712,21 +708,9 @@ export class AskView extends LitElement {
             this.processAssistantQuestion(question);
         };
 
-        this.handleAddAskResponse = (event, data) => {
-            console.log('📨 AskView: add-ask-response IPC 이벤트 수신!', data);
-
-            const { question, response } = data;
-
-            this.currentQuestion = question;
-            this.startHeaderAnimation();
-            this.simulateStreaming(response);
-
-            console.log('✅ AskView: 응답 업데이트 완료');
-        };
 
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
-            ipcRenderer.on('add-ask-response', this.handleAddAskResponse);
             ipcRenderer.on('ask-global-send', this.handleGlobalSendRequest);
             ipcRenderer.on('toggle-text-input', this.handleToggleTextInput);
             ipcRenderer.on('clear-ask-content', this.clearResponseContent);
@@ -739,7 +723,6 @@ export class AskView extends LitElement {
             ipcRenderer.on('clear-ask-response', () => {
                 console.log('📤 Clear response signal received');
                 this.currentResponse = '';
-                this.streamedResponse = '';
                 this.isStreaming = false;
                 this.isLoading = false;
                 this.headerText = 'AI Response';
@@ -794,7 +777,6 @@ export class AskView extends LitElement {
 
         if (window.require) {
             const { ipcRenderer } = window.require('electron');
-            ipcRenderer.removeListener('add-ask-response', this.handleAddAskResponse);
             ipcRenderer.removeListener('ask-global-send', this.handleGlobalSendRequest);
             ipcRenderer.removeListener('toggle-text-input', this.handleToggleTextInput);
             ipcRenderer.removeListener('clear-ask-content', this.clearResponseContent);
@@ -942,7 +924,6 @@ export class AskView extends LitElement {
     clearResponseContent() {
         this.currentResponse = '';
         this.currentQuestion = '';
-        // this.streamedResponse = ''; // 더 이상 필요 없는 속성
         this.isLoading = false;
         this.isStreaming = false;
         this.headerText = 'AI Response';
@@ -987,86 +968,6 @@ export class AskView extends LitElement {
         }, 1500);
     }
 
-    initializeStreamingContainer() {
-        const responseContainer = this.shadowRoot?.getElementById('responseContainer');
-        if (responseContainer) {
-            responseContainer.innerHTML = '';
-            this.streamingContainer = responseContainer;
-        }
-    }
-
-    updateStreamedContentSafe(chunk) {
-        if (!this.streamingContainer) return;
-
-        if (this.isDOMPurifyLoaded && this.DOMPurify) {
-            const testContent = this.fixIncompleteCodeBlocks(this.accumulatedChunks);
-            const sanitized = this.DOMPurify.sanitize(testContent);
-
-            if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
-                console.warn('Unsafe content detected, stopping stream');
-                this.isStreaming = false;
-                this.streamingContainer.innerHTML = '<div class="response-line">⚠️ Content blocked for security reasons</div>';
-                return;
-            }
-        }
-
-        if (chunk.match(/[\s\n,.!?;:]/) || this.accumulatedChunks.length % 10 === 0) {
-            this.renderStreamingChunk();
-        }
-    }
-
-    renderStreamingChunk() {
-        if (!this.streamingContainer) return;
-
-        const processedResponse = this.fixIncompleteCodeBlocks(this.accumulatedChunks);
-
-        if (this.isDOMPurifyLoaded && this.DOMPurify) {
-            const sanitized = this.DOMPurify.sanitize(this.renderMarkdown(processedResponse));
-
-            const tempContainer = document.createElement('div');
-            tempContainer.innerHTML = sanitized;
-
-            if (this.streamingContainer.innerHTML !== tempContainer.innerHTML) {
-                this.streamingContainer.innerHTML = tempContainer.innerHTML;
-            }
-        } else {
-            const rendered = this.renderMarkdown(processedResponse);
-            if (this.streamingContainer.innerHTML !== rendered) {
-                this.streamingContainer.innerHTML = rendered;
-            }
-        }
-
-        this.lastSafeContent = processedResponse;
-    }
-
-    updateStreamedContent() {
-        if (!this.isStreaming && !this.currentResponse) return;
-
-        const responseContainer = this.shadowRoot.getElementById('responseContainer');
-        if (!responseContainer) return;
-
-        // 텍스트 깨짐 방지를 위해, 불완전한 코드 블록은 닫아주고 렌더링
-        let textToRender = this.isStreaming ? this.accumulatedResponse : this.currentResponse;
-        textToRender = this.fixIncompleteCodeBlocks(textToRender);
-
-        if (this.isLibrariesLoaded && this.marked) {
-            // DOMPurify를 사용해 안전하게 렌더링
-            const dirtyHtml = this.parseMarkdown(textToRender);
-            const cleanHtml = this.DOMPurify ? this.DOMPurify.sanitize(dirtyHtml) : dirtyHtml;
-            responseContainer.innerHTML = cleanHtml;
-
-            // 스크롤을 맨 아래로 이동
-            responseContainer.scrollTop = responseContainer.scrollHeight;
-        } else {
-            // 라이브러리 로드 전이면 일반 텍스트로 표시
-            responseContainer.textContent = textToRender;
-        }
-    }
-
-    handleNewResponse(event, message) {
-        this.currentResponse = message;
-        this.requestUpdate();
-    }
 
     renderMarkdown(content) {
         if (!content) return '';
@@ -1254,8 +1155,6 @@ export class AskView extends LitElement {
 
     updated(changedProperties) {
         super.updated(changedProperties);
-        // ✨ lit-element의 리렌더링에 맡기고, 명시적인 호출은 핸들러에서 처리합니다.
-        // 또는 필요한 경우 renderContent()를 호출할 수 있습니다.
         if (changedProperties.has('isLoading')) {
             this.renderContent();
         }

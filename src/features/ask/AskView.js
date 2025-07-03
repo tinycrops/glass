@@ -531,6 +531,10 @@ export class AskView extends LitElement {
         this.clearResponseContent = this.clearResponseContent.bind(this);
         
         this.loadLibraries();
+
+        // --- Resize helpers ---
+        this.adjustHeightThrottle = null;
+        this.isThrottled = false;
     }
 
     async loadLibraries() {
@@ -1129,11 +1133,20 @@ export class AskView extends LitElement {
 
     updated(changedProperties) {
         super.updated(changedProperties);
-        if (changedProperties.has('currentResponse') || 
+        if (changedProperties.has('currentResponse') ||
             changedProperties.has('streamedResponse') ||
             changedProperties.has('isLibrariesLoaded')) {
             this.updateResponseContent();
+            this.adjustWindowHeightThrottled();
         }
+
+        if (changedProperties.has('showTextInput') || changedProperties.has('isLoading')) {
+            this.adjustWindowHeightThrottled();
+        }
+    }
+
+    firstUpdated() {
+        setTimeout(() => this.adjustWindowHeight(), 200);
     }
 
     handleGlobalSendRequest() {
@@ -1205,6 +1218,43 @@ export class AskView extends LitElement {
                 </div>
             </div>
         `;
+    }
+
+    // Dynamically resize the BrowserWindow to fit current content
+    adjustWindowHeight() {
+        if (!window.require) return;
+
+        this.updateComplete.then(() => {
+            const headerEl   = this.shadowRoot.querySelector('.response-header');
+            const responseEl = this.shadowRoot.querySelector('.response-container');
+            const inputEl    = this.shadowRoot.querySelector('.text-input-container');
+
+            if (!headerEl || !responseEl) return;
+
+            const headerHeight   = headerEl.classList.contains('hidden') ? 0 : headerEl.offsetHeight;
+            const responseHeight = responseEl.scrollHeight;
+            const inputHeight    = (inputEl && !inputEl.classList.contains('hidden')) ? inputEl.offsetHeight : 0;
+
+            const idealHeight = headerHeight + responseHeight + inputHeight + 20; // padding
+
+            const targetHeight = Math.min(700, Math.max(200, idealHeight));
+
+            const { ipcRenderer } = window.require('electron');
+            ipcRenderer.invoke('adjust-window-height', targetHeight);
+
+        }).catch(err => console.error('AskView adjustWindowHeight error:', err));
+    }
+
+    // Throttled wrapper to avoid excessive IPC spam (executes at most once per animation frame)
+    adjustWindowHeightThrottled() {
+        if (this.isThrottled) return;
+
+        this.adjustWindowHeight();
+        this.isThrottled = true;
+
+        this.adjustHeightThrottle = setTimeout(() => {
+            this.isThrottled = false;
+        }, 16);
     }
 }
 

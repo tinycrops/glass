@@ -990,7 +990,12 @@ function createWindows(sendToRenderer, openaiSessionRef) {
             const minHeight = senderWindow.getMinimumSize()[1];
             const maxHeight = senderWindow.getMaximumSize()[1];
             
-            const adjustedHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
+            let adjustedHeight;
+            if (maxHeight === 0) {
+                adjustedHeight = Math.max(minHeight, targetHeight);
+            } else {
+                adjustedHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
+            }
             
             senderWindow.setSize(currentBounds.width, adjustedHeight, false);
             

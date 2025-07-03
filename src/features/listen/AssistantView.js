@@ -21,12 +21,25 @@ export class AssistantView extends LitElement {
             margin: 8px 0 !important;
             overflow-x: auto !important;
             border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            white-space: pre !important;
+            word-wrap: normal !important;
+            word-break: normal !important;
         }
 
         .insights-container code {
             font-family: 'Monaco', 'Menlo', 'Consolas', monospace !important;
             font-size: 11px !important;
             background: transparent !important;
+            white-space: pre !important;
+            word-wrap: normal !important;
+            word-break: normal !important;
+        }
+
+        .insights-container pre code {
+            white-space: pre !important;
+            word-wrap: normal !important;
+            word-break: normal !important;
+            display: block !important;
         }
 
         .insights-container p code {
@@ -580,6 +593,9 @@ export class AssistantView extends LitElement {
                     },
                     breaks: true,
                     gfm: true,
+                    pedantic: false,
+                    smartypants: false,
+                    xhtml: false,
                 });
 
                 this.isLibrariesLoaded = true;

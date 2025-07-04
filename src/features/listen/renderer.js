@@ -229,16 +229,33 @@ class SimpleAEC {
         this.sampleRate = 24000;
         this.delaySamples = Math.floor((this.echoDelay / 1000) * this.sampleRate);
 
-        this.echoGain = 0.5;
+        this.echoGain = 0.9;
         this.noiseFloor = 0.01;
 
-        console.log('🎯 Weakened AEC initialized');
+        // 🔧 Adaptive-gain parameters (User-tuned, very aggressive)
+        this.targetErr = 0.002;
+        this.adaptRate  = 0.1;
+
+        console.log('🎯 AEC initialized (hyper-aggressive)');
     }
 
     process(micData, systemData) {
         if (!systemData || systemData.length === 0) {
             return micData;
         }
+
+        for (let i = 0; i < systemData.length; i++) {
+            if (systemData[i] > 0.98) systemData[i] = 0.98;
+            else if (systemData[i] < -0.98) systemData[i] = -0.98;
+
+            systemData[i] = Math.tanh(systemData[i] * 4);
+        }
+
+        let sum2 = 0;
+        for (let i = 0; i < systemData.length; i++) sum2 += systemData[i] * systemData[i];
+        const rms = Math.sqrt(sum2 / systemData.length);
+        const targetRms = 0.08;                   // 🔧 기준 RMS (기존 0.1)
+        const scale = targetRms / (rms + 1e-6);   // 1e-6: 0-division 방지
 
         const output = new Float32Array(micData.length);
 
@@ -251,22 +268,31 @@ class SimpleAEC {
                 const delayIndex = i - optimalDelay - d;
                 if (delayIndex >= 0 && delayIndex < systemData.length) {
                     const weight = Math.exp(-Math.abs(d) / 1000);
-                    echoEstimate += systemData[delayIndex] * this.echoGain * weight;
+                    echoEstimate += systemData[delayIndex] * scale * this.echoGain * weight;
                 }
             }
 
-            output[i] = micData[i] - echoEstimate * 0.5;
+            output[i] = micData[i] - echoEstimate * 0.9;
 
             if (Math.abs(output[i]) < this.noiseFloor) {
                 output[i] *= 0.5;
             }
 
             if (this.isSimilarToSystem(output[i], systemData, i, optimalDelay)) {
-                output[i] *= 0.5;
+                output[i] *= 0.25;
             }
 
             output[i] = Math.max(-1, Math.min(1, output[i]));
         }
+
+
+        let errSum = 0;
+        for (let i = 0; i < output.length; i++) errSum += output[i] * output[i];
+        const errRms = Math.sqrt(errSum / output.length);
+
+        const err = errRms - this.targetErr;
+        this.echoGain += this.adaptRate * err;      // 비례 제어
+        this.echoGain  = Math.max(0, Math.min(1, this.echoGain));
 
         return output;
     }
@@ -309,7 +335,7 @@ class SimpleAEC {
             }
         }
 
-        return similarity / (2 * windowSize + 1) < 0.2;
+        return similarity / (2 * windowSize + 1) < 0.15;
     }
 }
 

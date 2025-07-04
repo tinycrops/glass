@@ -42,7 +42,6 @@ const windowDefinitions = {
         allowedStates: ['app'],
     },
     listen: {
-    listen: {
         file: 'assistant.html',
         options: {
             /*…*/

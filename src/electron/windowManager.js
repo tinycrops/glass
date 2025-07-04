@@ -42,6 +42,7 @@ const windowDefinitions = {
         allowedStates: ['app'],
     },
     listen: {
+    listen: {
         file: 'assistant.html',
         options: {
             /*…*/
@@ -960,6 +961,13 @@ function createWindows() {
         createFeatureWindows(header);
     }
 
+
+    windowPool.set('header', header);
+
+    if (currentHeaderState === 'app') {
+        createFeatureWindows(header);
+    }
+
     header.setContentProtection(isContentProtectionOn);
     header.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     header.loadFile(path.join(__dirname, '../app/header.html'));
@@ -990,6 +998,10 @@ function createWindows() {
     ipcMain.handle('toggle-all-windows-visibility', toggleAllWindowsVisibility);
 
     ipcMain.handle('toggle-feature', async (event, featureName) => {
+        if (!windowPool.get(featureName) && currentHeaderState === 'app') {
+            createFeatureWindows(windowPool.get('header'));
+        }
+
         if (!windowPool.get(featureName) && currentHeaderState === 'app') {
             createFeatureWindows(windowPool.get('header'));
         }

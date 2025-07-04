@@ -102,6 +102,12 @@ function flushTheirCompletion() {
 }
 
 function debounceMyCompletion(text) {
+    // 상대방이 말하고 있던 경우, 화자가 변경되었으므로 즉시 상대방의 말풍선을 완성합니다.
+    if (theirCompletionTimer) {
+        clearTimeout(theirCompletionTimer);
+        flushTheirCompletion();
+    }
+
     myCompletionBuffer += (myCompletionBuffer ? ' ' : '') + text;
 
     if (myCompletionTimer) clearTimeout(myCompletionTimer);
@@ -109,6 +115,12 @@ function debounceMyCompletion(text) {
 }
 
 function debounceTheirCompletion(text) {
+    // 내가 말하고 있던 경우, 화자가 변경되었으므로 즉시 내 말풍선을 완성합니다.
+    if (myCompletionTimer) {
+        clearTimeout(myCompletionTimer);
+        flushMyCompletion();
+    }
+
     theirCompletionBuffer += (theirCompletionBuffer ? ' ' : '') + text;
 
     if (theirCompletionTimer) clearTimeout(theirCompletionTimer);
@@ -442,6 +454,10 @@ async function initializeNewSession() {
         conversationHistory = [];
         myCurrentUtterance = '';
         theirCurrentUtterance = '';
+
+        // 🔄 Reset analysis state so the new session starts fresh
+        previousAnalysisResult = null;
+        analysisHistory = [];
 
         // sendToRenderer('update-outline', []);
         // sendToRenderer('update-analysis-requests', []);

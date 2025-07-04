@@ -935,6 +935,16 @@ export class AssistantView extends LitElement {
 
                 if (!wasActive && isActive) {
                     this.hasCompletedRecording = false;
+
+                    // 🔄 Reset transcript & analysis when a fresh session starts
+                    this.sttMessages = [];
+                    this.structuredData = {
+                        summary: [],
+                        topic: { header: '', bullets: [] },
+                        actions: [],
+                        followUps: [],
+                    };
+                    this.requestUpdate();
                 }
                 if (wasActive && !isActive) {
                     this.hasCompletedRecording = true;

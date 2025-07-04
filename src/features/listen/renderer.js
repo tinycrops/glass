@@ -14,6 +14,21 @@ const BUFFER_SIZE = 4096;
 let systemAudioBuffer = [];
 const MAX_SYSTEM_BUFFER_SIZE = 10;
 
+function isVoiceActive(audioFloat32Array, threshold = 0.005) {
+    if (!audioFloat32Array || audioFloat32Array.length === 0) {
+        return false;
+    }
+
+    let sumOfSquares = 0;
+    for (let i = 0; i < audioFloat32Array.length; i++) {
+        sumOfSquares += audioFloat32Array[i] * audioFloat32Array[i];
+    }
+    const rms = Math.sqrt(sumOfSquares / audioFloat32Array.length);
+
+    // console.log(`VAD RMS: ${rms.toFixed(4)}`); // For debugging VAD threshold
+
+    return rms > threshold;
+}
 
 let currentImageQuality = 'medium'; // Store current image quality for manual screenshots
 let lastScreenshotBase64 = null; // Store the latest screenshot
@@ -650,18 +665,21 @@ function setupMicProcessing(micStream) {
 
         while (audioBuffer.length >= samplesPerChunk) {
             let chunk = audioBuffer.splice(0, samplesPerChunk);
+            let processedChunk = new Float32Array(chunk);
 
+            // Check for system audio and apply AEC only if voice is active
             if (aecProcessor && systemAudioBuffer.length > 0) {
                 const latestSystemAudio = systemAudioBuffer[systemAudioBuffer.length - 1];
                 const systemFloat32 = base64ToFloat32Array(latestSystemAudio.data);
 
-                const processedChunk = aecProcessor.process(new Float32Array(chunk), systemFloat32);
-
-                chunk = Array.from(processedChunk);
-                console.log('🔊 Applied AEC processing to mic audio');
+                // Apply AEC only when system audio has active speech
+                if (isVoiceActive(systemFloat32)) {
+                    processedChunk = aecProcessor.process(new Float32Array(chunk), systemFloat32);
+                    console.log('🔊 Applied AEC because system audio is active');
+                }
             }
 
-            const pcmData16 = convertFloat32ToInt16(chunk);
+            const pcmData16 = convertFloat32ToInt16(processedChunk);
             const base64Data = arrayBufferToBase64(pcmData16.buffer);
 
             await ipcRenderer.invoke('send-audio-content', {

@@ -340,30 +340,30 @@ async function handleFirebaseAuthCallback(params) {
         dataService.setCurrentUser(user.uid);
         console.log('[Auth] User data synced with local DB.');
 
-        if (firebaseUser.email && firebaseUser.idToken) {
-            try {
-                const { getVirtualKeyByEmail, setApiKey } = require('./electron/windowManager');
-                console.log('[Auth] Fetching virtual key for:', firebaseUser.email);
-                const vKey = await getVirtualKeyByEmail(firebaseUser.email, firebaseUser.idToken);
-                console.log('[Auth] Virtual key fetched successfully');
+        // if (firebaseUser.email && idToken) {
+        //     try {
+        //         const { getVirtualKeyByEmail, setApiKey } = require('./electron/windowManager');
+        //         console.log('[Auth] Fetching virtual key for:', firebaseUser.email);
+        //         const vKey = await getVirtualKeyByEmail(firebaseUser.email, idToken);
+        //         console.log('[Auth] Virtual key fetched successfully');
                 
-                await setApiKey(vKey);
-                console.log('[Auth] Virtual key saved successfully');
+        //         await setApiKey(vKey);
+        //         console.log('[Auth] Virtual key saved successfully');
                 
-                const { setCurrentFirebaseUser } = require('./electron/windowManager');
-                setCurrentFirebaseUser(firebaseUser);
+        //         const { setCurrentFirebaseUser } = require('./electron/windowManager');
+        //         setCurrentFirebaseUser(firebaseUser);
                 
-                const { windowPool } = require('./electron/windowManager');
-                windowPool.forEach(win => {
-                    if (win && !win.isDestroyed()) {
-                        win.webContents.send('api-key-updated');
-                        win.webContents.send('firebase-user-updated', firebaseUser);
-                    }
-                });
-            } catch (error) {
-                console.error('[Auth] Virtual key fetch failed:', error);
-            }
-        }
+        //         const { windowPool } = require('./electron/windowManager');
+        //         windowPool.forEach(win => {
+        //             if (win && !win.isDestroyed()) {
+        //                 win.webContents.send('api-key-updated');
+        //                 win.webContents.send('firebase-user-updated', firebaseUser);
+        //             }
+        //         });
+        //     } catch (error) {
+        //         console.error('[Auth] Virtual key fetch failed:', error);
+        //     }
+        // }
 
         const { windowPool } = require('./electron/windowManager');
         const header = windowPool.get('header');

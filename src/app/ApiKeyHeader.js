@@ -439,21 +439,12 @@ export class ApiKeyHeader extends LitElement {
         super.connectedCallback();
         this.addEventListener('animationend', this.handleAnimationEnd);
 
-        if (window.require) {
-            window.require('electron').ipcRenderer.on('login-successful', () => {
-                console.log('Received login-successful signal, hiding ApiKeyHeader.');
-                this.startSlideOutAnimation();
-            });
-        }
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         this.removeEventListener('animationend', this.handleAnimationEnd);
 
-        if (window.require) {
-            window.require('electron').ipcRenderer.removeAllListeners('login-successful');
-        }
     }
 
     render() {

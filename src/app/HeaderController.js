@@ -19,11 +19,34 @@ const auth = getAuth(firebaseApp);
 
 class HeaderTransitionManager {
     constructor() {
-        this.apiKeyHeader = document.getElementById('apikey-header');
-        this.appHeader = document.getElementById('app-header');
-        this.isInitialized = false;
-        this.hasApiKey = false;
-        this.notifyHeaderState();
+
+        this.headerContainer      = document.getElementById('header-container');
+        this.currentHeaderType    = null;   // 'apikey' | 'app'
+        this.apiKeyHeader         = null;
+        this.appHeader            = null;
+
+        /**
+         * only one header window is allowed
+         * @param {'apikey'|'app'} type
+         */
+        this.ensureHeader = (type) => {
+            if (this.currentHeaderType === type) return;
+
+            if (this.apiKeyHeader) { this.apiKeyHeader.remove(); this.apiKeyHeader = null; }
+            if (this.appHeader)    { this.appHeader.remove();    this.appHeader   = null; }
+
+            if (type === 'apikey') {
+                this.apiKeyHeader      = document.createElement('apikey-header');
+                this.headerContainer.appendChild(this.apiKeyHeader);
+            } else {
+                this.appHeader         = document.createElement('app-header');
+                this.headerContainer.appendChild(this.appHeader);
+                this.appHeader.startSlideInAnimation?.();
+            }
+
+            this.currentHeaderType = type;
+            this.notifyHeaderState(type);
+        };
 
         console.log('[HeaderController] Manager initialized');
 
@@ -33,10 +56,6 @@ class HeaderTransitionManager {
                 .invoke('get-current-api-key')
                 .then(storedKey => {
                     this.hasApiKey = !!storedKey;
-                    if (this.hasApiKey && !auth.currentUser) {
-                        console.log('[HeaderController] Stored API key detected. Skipping ApiKeyHeader.');
-                        this.transitionToAppHeader(false);
-                    }
                 })
                 .catch(() => {});
         }
@@ -69,7 +88,8 @@ class HeaderTransitionManager {
                     this.transitionToAppHeader();
                 }
             });
-
+            
+            
             ipcRenderer.on('request-firebase-logout', async () => {
                 console.log('[HeaderController] Received request to sign out.');
                 try {
@@ -113,6 +133,8 @@ class HeaderTransitionManager {
                 }
             });
         }
+
+        this._bootstrap();
 
         onAuthStateChanged(auth, async user => {
             console.log('[HeaderController] Auth state changed. User:', user ? user.email : 'null');
@@ -163,74 +185,87 @@ class HeaderTransitionManager {
         });
     }
 
-    notifyHeaderState() {
-        if (window.require) {
-            const { ipcRenderer } = window.require('electron');
-            const isApiKeyVisible =
-                this.apiKeyHeader && this.apiKeyHeader.style.display !== 'none' && !this.apiKeyHeader.classList.contains('hidden');
-            const state = isApiKeyVisible ? 'apikey' : 'app';
 
-            ipcRenderer.send('header-state-changed', state);
-            console.log(`[HeaderController] Notified header state: ${state}`);
+    notifyHeaderState(stateOverride) {
+        const state = stateOverride || this.currentHeaderType || 'apikey';
+        if (window.require) {
+            window.require('electron').ipcRenderer.send('header-state-changed', state);
         }
     }
+
+      async _bootstrap() {
+              let storedKey = null;
+              if (window.require) {
+                  try {
+                      storedKey = await window
+                          .require('electron')
+                          .ipcRenderer.invoke('get-current-api-key');
+                  } catch (_) {}
+              }
+              this.hasApiKey = !!storedKey;
+        
+              const user = await new Promise(resolve => {
+                  const unsubscribe = onAuthStateChanged(auth, u => {
+                      unsubscribe();
+                      resolve(u);
+                  });
+              });
+        
+              if (user || this.hasApiKey) {
+                  await this._resizeForApp();
+                  this.ensureHeader('app');
+              } else {
+                  await this._resizeForApiKey();
+                  this.ensureHeader('apikey');
+              }
+    }
+
 
     async transitionToAppHeader(animate = true) {
-        console.log(`[HeaderController] Transitioning to AppHeader (animate: ${animate})`);
-        const isApiKeyVisible = this.apiKeyHeader.style.display !== 'none' && !this.apiKeyHeader.classList.contains('hidden');
+        if (this.currentHeaderType === 'app') {
+            return this._resizeForApp();
+        }
 
-        if (animate && isApiKeyVisible) {
-            this.apiKeyHeader.startSlideOutAnimation();
-            this.apiKeyHeader.addEventListener(
-                'animationend',
-                () => {
-                    this.showAppHeader();
-                },
-                { once: true }
-            );
+        const canAnimate =
+            animate &&
+            this.apiKeyHeader &&
+            !this.apiKeyHeader.classList.contains('hidden') &&
+            typeof this.apiKeyHeader.startSlideOutAnimation === 'function';
+    
+        if (canAnimate) {
+            const old = this.apiKeyHeader;
+            const onEnd = () => {
+                clearTimeout(fallback);
+                this._resizeForApp().then(() => this.ensureHeader('app'));
+            };
+            old.addEventListener('animationend', onEnd, { once: true });
+            old.startSlideOutAnimation();
+    
+            const fallback = setTimeout(onEnd, 450);
         } else {
-            this.showAppHeader();
+            this.ensureHeader('app');
+            this._resizeForApp();
         }
     }
 
-    async showAppHeader() {
-        try {
-            if (window.require) {
-                const { ipcRenderer } = window.require('electron');
-                try {
-                    await ipcRenderer.invoke('resize-header-window', { width: 353, height: 60 });
-                } catch (resizeError) {
-                    console.warn('[HeaderController] Window resize failed:', resizeError);
+    _resizeForApp() {
+            if (!window.require) return;
+            return window
+                .require('electron')
+                .ipcRenderer.invoke('resize-header-window', { width: 353, height: 60 })
+                .catch(() => {});
+        }
+
+        async transitionToApiKeyHeader() {
+                await window.require('electron')
+                    .ipcRenderer.invoke('resize-header-window', { width: 285, height: 220 });
+            
+                if (this.currentHeaderType !== 'apikey') {
+                    this.ensureHeader('apikey');
                 }
+            
+                 if (this.apiKeyHeader) this.apiKeyHeader.reset();
             }
-
-            this.apiKeyHeader.style.display = 'none';
-            this.appHeader.style.display = 'block';
-
-            if (this.appHeader.startSlideInAnimation) {
-                this.appHeader.startSlideInAnimation();
-            } else {
-                this.appHeader.classList.remove('hidden');
-            }
-
-            this.notifyHeaderState();
-
-            console.log('[HeaderController] AppHeader displayed successfully');
-        } catch (error) {
-            console.error('[HeaderController] Error in showAppHeader:', error);
-            this.apiKeyHeader.style.display = 'none';
-            this.appHeader.style.display = 'block';
-        }
-    }
-
-    async transitionToApiKeyHeader() {
-        console.log('[HeaderController] Transitioning to ApiKeyHeader');
-        await window.require('electron').ipcRenderer.invoke('resize-header-window', { width: 285, height: 220 });
-        this.appHeader.style.display = 'none';
-        this.apiKeyHeader.style.display = 'block';
-        this.apiKeyHeader.reset();
-        this.notifyHeaderState();
-    }
 }
 
 window.addEventListener('DOMContentLoaded', () => {

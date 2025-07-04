@@ -550,6 +550,9 @@ export class AskView extends LitElement {
         this.clearResponseContent = this.clearResponseContent.bind(this);
         this.processAssistantQuestion = this.processAssistantQuestion.bind(this);
         this.handleToggleTextInput = this.handleToggleTextInput.bind(this);
+        this.handleEscKey = this.handleEscKey.bind(this);
+        this.handleDocumentClick = this.handleDocumentClick.bind(this);
+        this.handleWindowBlur = this.handleWindowBlur.bind(this);
 
         this.loadLibraries();
 
@@ -625,10 +628,8 @@ export class AskView extends LitElement {
 
     handleEscKey(e) {
         if (e.key === 'Escape') {
-            if (!this.currentResponse && !this.isLoading && !this.isStreaming) {
-                e.preventDefault();
-                this.closeIfNoContent();
-            }
+            e.preventDefault();
+            this.closeResponsePanel();
         }
     }
 
